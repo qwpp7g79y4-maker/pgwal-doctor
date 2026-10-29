@@ -12,6 +12,7 @@ mod psql;
 mod report;
 mod root;
 mod source;
+mod units;
 mod walname;
 
 pub use lsn::{lag_bytes, parse_lsn};
@@ -19,6 +20,7 @@ pub use psql::{dsn_has_password, PsqlSource};
 pub use report::{escape, Finding, Report, Status};
 pub use root::Root;
 pub use source::{Cell, FixtureSource, PgSource, Rows, SourceError};
+pub use units::{to_bytes, to_seconds};
 pub use walname::is_segment_name;
 
 /// Run the offline checks on `datadir` and the online checks on `source`.
@@ -34,6 +36,8 @@ pub fn scan(datadir: Option<&Root>, source: Option<&dyn PgSource>) -> Report {
     }
     if let Some(source) = source {
         let settings = source.settings();
+        let mut settings_facts = checks::SettingsFacts::default();
+        findings.extend(checks::settings(&settings, &mut settings_facts));
         let mut slot_facts = checks::SlotFacts::default();
         findings.extend(checks::slots(
             &source.slots(),
