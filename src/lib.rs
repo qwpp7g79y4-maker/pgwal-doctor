@@ -1,7 +1,7 @@
 //! Read-only report of why PostgreSQL's `pg_wal` keeps growing.
 //!
 //! The tool never writes to PostgreSQL or to the data directory. Offline
-//! mode only reads files below a [`Root`]. Online mode (added later) only
+//! mode only reads files below a [`Root`]. Online mode only
 //! runs `SELECT` queries through a `psql` subprocess.
 
 #![forbid(unsafe_code)]
