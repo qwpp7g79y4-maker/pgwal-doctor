@@ -24,7 +24,7 @@ struct Cli {
 fn main() -> ExitCode {
     let cli = Cli::parse();
     let root = cli.datadir.map(Root::new);
-    let report = scan(root.as_ref());
+    let report = scan(root.as_ref(), None);
     print_report(&report, cli.json);
     ExitCode::from(report.exit_code() as u8)
 }
