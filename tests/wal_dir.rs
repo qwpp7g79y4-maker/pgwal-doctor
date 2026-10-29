@@ -84,7 +84,7 @@ fn unreadable_pg_wal_is_needs_root() {
     let report = scan(Some(&Root::new(tmp.path())), None);
     let finding = only(&report, "wal_dir");
     assert_eq!(finding.status, Status::NeedsRoot);
-    assert_eq!(report.needs_root, vec!["wal_dir".to_string()]);
+    assert!(report.needs_root.contains(&"wal_dir".to_string()));
     assert_eq!(report.exit_code(), 1);
 }
 

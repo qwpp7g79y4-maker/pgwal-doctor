@@ -18,9 +18,11 @@ pub use walname::is_segment_name;
 /// Run every offline check against the data directory `datadir`.
 pub fn scan(datadir: Option<&Root>, _source: Option<&()>) -> Report {
     let mut findings = Vec::new();
-    let mut facts = checks::WalDirFacts::default();
+    let mut wal_facts = checks::WalDirFacts::default();
+    let mut backlog_facts = checks::BacklogFacts::default();
     if let Some(root) = datadir {
-        findings.extend(checks::wal_dir(root, &mut facts));
+        findings.extend(checks::wal_dir(root, &mut wal_facts));
+        findings.extend(checks::archive_backlog(root, &mut backlog_facts));
         findings.extend(checks::pg_replslot(root));
     }
     Report::from_findings(findings)
