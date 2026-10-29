@@ -1,0 +1,22 @@
+[package]
+name = "pgwal-doctor"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+authors = ["PEPAI <pep_ai@icloud.com>"]
+description = "Read-only report of why PostgreSQL's pg_wal keeps growing"
+publish = false
+
+[dependencies]
+clap = { version = "4.6", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[lib]
+name = "pgwal_doctor"
+path = "src/lib.rs"
+
+[[bin]]
+name = "pgwal-doctor"
+path = "src/main.rs"
