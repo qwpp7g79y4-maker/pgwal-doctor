@@ -49,6 +49,8 @@ pub fn scan(datadir: Option<&Root>, source: Option<&dyn PgSource>) -> Report {
             settings.as_ref().ok(),
             backlog_facts.ready,
         ));
+        findings.extend(checks::transactions(&source.activity()));
+        findings.extend(checks::prepared(&source.prepared(), settings.as_ref().ok()));
     }
     Report::from_findings(findings)
 }
