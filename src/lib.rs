@@ -29,6 +29,8 @@ pub fn scan(datadir: Option<&Root>, source: Option<&dyn PgSource>) -> Report {
     let mut findings = Vec::new();
     let mut wal_facts = checks::WalDirFacts::default();
     let mut backlog_facts = checks::BacklogFacts::default();
+    let mut waldir_facts = checks::WaldirFacts::default();
+    let mut inputs = checks::SummaryInputs::default();
     if let Some(root) = datadir {
         findings.extend(checks::wal_dir(root, &mut wal_facts));
         findings.extend(checks::archive_backlog(root, &mut backlog_facts));
@@ -51,6 +53,12 @@ pub fn scan(datadir: Option<&Root>, source: Option<&dyn PgSource>) -> Report {
         ));
         findings.extend(checks::transactions(&source.activity()));
         findings.extend(checks::prepared(&source.prepared(), settings.as_ref().ok()));
+        findings.extend(checks::waldir(&source.waldir(), &mut waldir_facts));
+        inputs.slot_retained = slot_facts.retained_max;
+        inputs.wal_keep = settings_facts.wal_keep_bytes;
     }
+    inputs.total = waldir_facts.total_bytes.or(wal_facts.total_bytes);
+    inputs.archive_backlog = backlog_facts.backlog_bytes;
+    findings.extend(checks::summary(&inputs));
     Report::from_findings(findings)
 }
