@@ -40,6 +40,11 @@ pub fn scan(datadir: Option<&Root>, source: Option<&dyn PgSource>) -> Report {
             settings.as_ref().ok(),
             &mut slot_facts,
         ));
+        findings.extend(checks::archiver(
+            &source.archiver(),
+            settings.as_ref().ok(),
+            backlog_facts.ready,
+        ));
     }
     Report::from_findings(findings)
 }
