@@ -1,0 +1,2 @@
+slot_name	plugin	slot_type	datoid	database	temporary	active	active_pid	xmin	catalog_xmin	restart_lsn	confirmed_flush_lsn	current_lsn
+standby1	\N	physical	\N	\N	f	f	\N	\N	\N	1/00000000	\N	5/00000000

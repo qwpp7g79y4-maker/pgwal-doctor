@@ -1,0 +1,4 @@
+slot_name	plugin	slot_type	datoid	database	temporary	active	active_pid	xmin	catalog_xmin	restart_lsn	confirmed_flush_lsn	two_phase	conflicting	wal_status	safe_wal_size	inactive_since	invalidation_reason	current_lsn
+dead_sub	pgoutput	logical	16384	appdb	f	f	\N	\N	790	\N	\N	t	t	lost	\N	2026-10-01 08:00:00+00	wal_removed	5/00000000
+sub1	pgoutput	logical	16384	appdb	f	t	3301	\N	800	4/FFFFF000	5/00000000	t	f	reserved	8589934592	\N	\N	5/00000000
+old_standby	\N	physical	\N	\N	f	f	\N	\N	\N	3/00000000	\N	f	f	extended	2147483648	2026-10-20 08:00:00+00	\N	5/00000000

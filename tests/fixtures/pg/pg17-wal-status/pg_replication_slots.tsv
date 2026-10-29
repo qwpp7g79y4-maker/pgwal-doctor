@@ -1,0 +1,4 @@
+slot_name	plugin	slot_type	datoid	database	temporary	active	active_pid	xmin	catalog_xmin	restart_lsn	confirmed_flush_lsn	two_phase	conflicting	wal_status	safe_wal_size	inactive_since	invalidation_reason	current_lsn
+s_extended	\N	physical	\N	\N	f	f	\N	\N	\N	4/00000000	\N	f	f	extended	1000000	2026-10-25 08:00:00+00	\N	5/00000000
+s_unreserved	\N	physical	\N	\N	f	f	\N	\N	\N	3/00000000	\N	f	f	unreserved	\N	2026-10-24 08:00:00+00	\N	5/00000000
+s_lost	\N	physical	\N	\N	f	f	\N	\N	\N	1/00000000	\N	f	t	lost	\N	2026-10-01 08:00:00+00	wal_removed	5/00000000

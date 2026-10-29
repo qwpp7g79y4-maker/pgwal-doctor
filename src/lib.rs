@@ -7,12 +7,16 @@
 #![forbid(unsafe_code)]
 
 mod checks;
+mod psql;
 mod report;
 mod root;
+mod source;
 mod walname;
 
+pub use psql::{dsn_has_password, PsqlSource};
 pub use report::{escape, Finding, Report, Status};
 pub use root::Root;
+pub use source::{Cell, FixtureSource, PgSource, Rows, SourceError};
 pub use walname::is_segment_name;
 
 /// Run every offline check against the data directory `datadir`.

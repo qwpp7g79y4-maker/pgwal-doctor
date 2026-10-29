@@ -1,0 +1,3 @@
+slot_name	plugin	slot_type	datoid	database	temporary	active	active_pid	xmin	catalog_xmin	restart_lsn	confirmed_flush_lsn	wal_status	safe_wal_size	current_lsn
+standby1	\N	physical	\N	\N	f	f	\N	\N	\N	3/00000000	\N	extended	1073741824	5/00000000
+standby2	\N	physical	\N	\N	f	t	2201	\N	\N	4/FFFF0000	\N	reserved	2147483648	5/00000000

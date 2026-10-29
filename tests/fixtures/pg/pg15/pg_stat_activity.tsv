@@ -1,0 +1,2 @@
+pid	usename	state	xact_start	backend_xmin	xact_age_s
+5201	app	idle in transaction	2026-10-29 03:00:00+00	1200	10800

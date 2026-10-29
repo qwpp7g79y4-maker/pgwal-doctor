@@ -1,0 +1,4 @@
+pid	usename	state	xact_start	backend_xmin	xact_age_s
+7001	other_user	\N	\N	\N	\N
+7002	other_user	\N	\N	\N	\N
+7003	me	idle	\N	\N	\N

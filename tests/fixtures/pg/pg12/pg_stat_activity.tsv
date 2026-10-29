@@ -1,0 +1,2 @@
+pid	usename	state	xact_start	backend_xmin	xact_age_s
+4101	app	active	2026-10-29 06:00:00+00	\N	5
