@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## [Unreleased]
+
+### Added
+
+- Manual page `man/pgwal-doctor.1`, aligned with `pgwal-doctor --help`.
+- `examples/quiet-datadir`, a fictional offline data directory, and
+  `examples/README.md` with the command and its exit code.
+- README (English and Dutch) names `--help`, `--version`, and the manual page.
+
 ## [0.1.0] - unreleased
 
 ### Added

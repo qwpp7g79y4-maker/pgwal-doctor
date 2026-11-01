@@ -1,0 +1,102 @@
+.TH PGWAL-DOCTOR 1 "2026-11-01" "pgwal-doctor 0.1.0" "User Commands"
+.SH NAME
+pgwal-doctor \- read-only report of why PostgreSQL's pg_wal keeps growing
+.SH SYNOPSIS
+.B pgwal-doctor
+[OPTIONS]
+.SH DESCRIPTION
+Read-only report of why PostgreSQL's pg_wal keeps growing.
+.PP
+There are no subcommands.
+Offline checks read a data directory given with
+.BR --datadir .
+Online checks run through
+.I psql
+when
+.B --dsn
+or
+.B --online
+is set.
+Both may be given together.
+A run with none of those three options is a usage error.
+.PP
+The program never writes to PostgreSQL or to the data directory.
+Online mode runs only SELECT queries, in a read-only session.
+A DSN that contains a password is refused.
+.SH OPTIONS
+.TP
+.B --json
+Print the report as JSON.
+.TP
+.B --datadir \fIPATH\fR
+Read this PostgreSQL data directory (offline checks).
+.TP
+.B --dsn \fIDSN\fR
+Also run the online checks through psql -d DSN.
+Only SELECT queries run, in a read-only session.
+A DSN with a password is refused: use ~/.pgpass or PGPASSWORD.
+.TP
+.B --online
+Run the online checks with the libpq environment (PGHOST, PGUSER, ...) only.
+.TP
+.B "-h, --help"
+Print help.
+.TP
+.B "-V, --version"
+Print version.
+.SH EXIT STATUS
+.TP
+.B 0
+Nothing actionable: no finding is Warn, NeedsRoot, or Error.
+.B --help
+and
+.B --version
+also exit 0.
+.TP
+.B 1
+A check reported Warn, NeedsRoot, or Error.
+A refused DSN and a failing connection are Error findings.
+.TP
+.B 2
+Usage error: an unknown option, or none of
+.BR --datadir ,
+.BR --dsn ,
+or
+.BR --online .
+.SH EXAMPLES
+From the repository root, read the fictional data directory
+.I examples/quiet-datadir
+(one invented 24-hex segment name, one
+.I .done
+marker, and no
+.I .ready
+file).
+Expected exit code 0:
+.PP
+.nf
+pgwal-doctor --datadir examples/quiet-datadir
+.fi
+.SH ENVIRONMENT
+.TP
+.B PGWAL_DOCTOR_PSQL
+Program to run instead of
+.I psql
+for online checks.
+.TP
+.B PGHOST, PGUSER, ...
+Libpq connection settings used by
+.BR --online ,
+and by
+.B --dsn
+when the DSN does not set them.
+.TP
+.B PGPASSWORD
+Password for online checks.
+A password inside
+.B --dsn
+is refused.
+.SH SEE ALSO
+.I README.md
+in the source tree.
+The manual source is
+.IR man/pgwal-doctor.1 .

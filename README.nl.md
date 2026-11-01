@@ -7,6 +7,7 @@ tool kijkt in één keer naar de gebruikelijke oorzaken en geeft één rapport,
 zodat je niet zes views met de hand hoeft te bevragen.
 
 Status: versie 0.1.0, nog niet uitgebracht (`publish = false`).
+Man-pagina: [man/pgwal-doctor.1](man/pgwal-doctor.1).
 
 ## Wat het controleert
 
@@ -53,6 +54,8 @@ pgwal-doctor --datadir /var/lib/postgresql/17/main            # offline
 pgwal-doctor --online                                         # libpq-omgeving
 pgwal-doctor --dsn 'host=db1 user=pgwal_doctor dbname=postgres'
 pgwal-doctor --datadir /pad --dsn 'service=prod' --json       # beide, JSON
+pgwal-doctor --help                                           # gebruik, exitcode 0
+pgwal-doctor --version                                        # versie, exitcode 0
 ```
 
 Online heeft `psql` nodig op `PATH` (of zet `PGWAL_DOCTOR_PSQL`).

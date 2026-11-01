@@ -7,6 +7,7 @@ usual causes in one pass and prints one report, so you do not have to query
 six views by hand.
 
 Status: version 0.1.0, unreleased (`publish = false`).
+Manual page: [man/pgwal-doctor.1](man/pgwal-doctor.1).
 
 ## What it checks
 
@@ -51,6 +52,8 @@ pgwal-doctor --datadir /var/lib/postgresql/17/main            # offline
 pgwal-doctor --online                                         # libpq environment
 pgwal-doctor --dsn 'host=db1 user=pgwal_doctor dbname=postgres'
 pgwal-doctor --datadir /path --dsn 'service=prod' --json      # both, JSON
+pgwal-doctor --help                                           # usage, exit 0
+pgwal-doctor --version                                        # version, exit 0
 ```
 
 Online mode needs `psql` on `PATH` (or set `PGWAL_DOCTOR_PSQL`). Connection
