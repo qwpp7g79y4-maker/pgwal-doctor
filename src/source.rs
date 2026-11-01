@@ -8,7 +8,7 @@
 use std::fmt;
 use std::fs;
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Why a query gave no table.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -154,7 +154,7 @@ impl FixtureSource {
             return Err(SourceError::PermissionDenied);
         }
         let path = self.dir.join(format!("{view}.tsv"));
-        match fs::read(&path) {
+        match read_regular_file(&path) {
             Ok(bytes) => Rows::parse_tsv(&String::from_utf8_lossy(&bytes)),
             Err(err) if err.kind() == io::ErrorKind::NotFound => {
                 Err(SourceError::Missing(view.to_string()))
@@ -162,6 +162,69 @@ impl FixtureSource {
             Err(err) => Err(SourceError::Other(format!("{}: {err}", path.display()))),
         }
     }
+}
+
+/// Read one named file.
+///
+/// The path is stat'd first. Anything that is not a regular file — a fifo, a
+/// device, or a directory — is refused before it is opened, so a pipe with no
+/// writer cannot block and a device is not read. On Unix the open that follows
+/// is non-blocking and the descriptor is checked again with `fstat`, in case
+/// the path changed after the first stat. Listing a directory stays on `read_dir`.
+fn read_regular_file(path: &Path) -> io::Result<Vec<u8>> {
+    let meta = fs::metadata(path)?;
+    if !meta.is_file() {
+        return Err(not_regular_file());
+    }
+    #[cfg(unix)]
+    {
+        read_regular_file_unix(path)
+    }
+    #[cfg(not(unix))]
+    {
+        fs::read(path)
+    }
+}
+
+fn not_regular_file() -> io::Error {
+    io::Error::new(io::ErrorKind::InvalidInput, "not a regular file")
+}
+
+/// `O_NONBLOCK` from `<fcntl.h>`. Linux uses `04000`; Solaris uses `0x80`;
+/// the other Unixes std supports use `0x4`.
+#[cfg(unix)]
+fn o_nonblock() -> i32 {
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "redox"))]
+    let flag = 0o4000;
+    #[cfg(any(target_os = "solaris", target_os = "illumos"))]
+    let flag = 0x80;
+    #[cfg(not(any(
+        target_os = "linux",
+        target_os = "android",
+        target_os = "redox",
+        target_os = "solaris",
+        target_os = "illumos",
+    )))]
+    let flag = 0x4;
+    flag
+}
+
+#[cfg(unix)]
+fn read_regular_file_unix(path: &Path) -> io::Result<Vec<u8>> {
+    use std::io::Read;
+    use std::os::unix::fs::OpenOptionsExt;
+
+    let mut file = fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(o_nonblock())
+        .open(path)?;
+    // `File::metadata` is `fstat` on the opened descriptor.
+    if !file.metadata()?.is_file() {
+        return Err(not_regular_file());
+    }
+    let mut bytes = Vec::new();
+    file.read_to_end(&mut bytes)?;
+    Ok(bytes)
 }
 
 impl PgSource for FixtureSource {
@@ -233,5 +296,112 @@ mod tests {
         );
         assert_eq!(source.settings().expect("settings").len(), 1);
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// A fifo (or a symlink to one), a device, or a directory is an error.
+    /// The read returns within two seconds and does not panic.
+    #[cfg(unix)]
+    #[test]
+    fn load_rejects_fifo_device_and_directory() {
+        use std::os::unix::fs::symlink;
+        use std::process::Command;
+        use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos();
+        let base = std::env::temp_dir().join(format!(
+            "pgwal-source-special-{}-{nanos}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&base).expect("mkdir");
+
+        let fifo_dir = base.join("fifo");
+        fs::create_dir(&fifo_dir).expect("mkdir fifo");
+        let pipe = fifo_dir.join("pipe");
+        assert!(
+            Command::new("mkfifo")
+                .arg(&pipe)
+                .status()
+                .expect("mkfifo")
+                .success(),
+            "mkfifo"
+        );
+        symlink(&pipe, fifo_dir.join("pg_settings.tsv")).expect("symlink to fifo");
+        let direct = fifo_dir.join("pg_replication_slots.tsv");
+        assert!(
+            Command::new("mkfifo")
+                .arg(&direct)
+                .status()
+                .expect("mkfifo")
+                .success(),
+            "mkfifo direct"
+        );
+
+        let source = FixtureSource::new(&fifo_dir);
+        let started = Instant::now();
+        let via_symlink = source.settings().expect_err("symlink to fifo");
+        assert!(
+            started.elapsed() < Duration::from_secs(2),
+            "symlink to a fifo hung"
+        );
+        assert!(
+            matches!(via_symlink, SourceError::Other(ref message) if message.contains("not a regular file")),
+            "{via_symlink}"
+        );
+        let started = Instant::now();
+        let direct_err = source.slots().expect_err("fifo");
+        assert!(started.elapsed() < Duration::from_secs(2), "fifo hung");
+        assert!(
+            matches!(direct_err, SourceError::Other(ref message) if message.contains("not a regular file")),
+            "{direct_err}"
+        );
+
+        let report = crate::scan(None, Some(&source));
+        assert_ne!(report.exit_code(), 0);
+        assert!(
+            report
+                .findings
+                .iter()
+                .any(|finding| finding.evidence.contains("not a regular file")),
+            "{report:?}"
+        );
+
+        let dev_dir = base.join("dev");
+        fs::create_dir(&dev_dir).expect("mkdir dev");
+        symlink("/dev/zero", dev_dir.join("pg_settings.tsv")).expect("symlink to device");
+        let started = Instant::now();
+        let device = FixtureSource::new(&dev_dir).settings().expect_err("device");
+        assert!(started.elapsed() < Duration::from_secs(2), "device hung");
+        assert!(
+            matches!(device, SourceError::Other(ref message) if message.contains("not a regular file")),
+            "{device}"
+        );
+
+        let as_dir = base.join("dir");
+        fs::create_dir_all(as_dir.join("pg_settings.tsv")).expect("directory named as a file");
+        let directory = FixtureSource::new(&as_dir)
+            .settings()
+            .expect_err("directory");
+        assert!(
+            matches!(directory, SourceError::Other(ref message) if message.contains("not a regular file")),
+            "{directory}"
+        );
+
+        let ok_dir = base.join("ok");
+        fs::create_dir(&ok_dir).expect("mkdir ok");
+        let real = ok_dir.join("real.tsv");
+        fs::write(&real, "name\tsetting\nx\t1\n").expect("write");
+        symlink(&real, ok_dir.join("pg_settings.tsv")).expect("symlink to file");
+        assert_eq!(
+            FixtureSource::new(&ok_dir)
+                .settings()
+                .expect("symlink to a regular file")
+                .len(),
+            1
+        );
+
+        let _ = fs::remove_dir_all(&base);
     }
 }
