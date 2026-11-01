@@ -62,6 +62,12 @@ fn json_output_is_valid_and_has_findings_array() {
 fn no_source_given_exits_2() {
     let out = run(&[]);
     assert_eq!(out.status.code(), Some(2));
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("give --datadir, --dsn or --online"),
+        "{stderr}"
+    );
+    assert!(!stderr.contains("panicked"), "{stderr}");
 }
 
 /// A `psql` stand-in that answers from `tests/fixtures/pg/<scenario>`.
