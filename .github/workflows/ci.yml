@@ -2,7 +2,6 @@ name: CI
 
 on:
   push:
-    branches: [main]
   pull_request:
 
 permissions:
@@ -10,14 +9,17 @@ permissions:
 
 jobs:
   test:
-    name: fmt, clippy, test (stable)
-    runs-on: ubuntu-latest
+    name: fmt, clippy, test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest, macos-15-intel]
     steps:
       - uses: actions/checkout@v4
-      - name: Install Rust stable
-        run: rustup update stable && rustup default stable
-      - name: Add rustfmt and clippy
-        run: rustup component add rustfmt clippy
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
       - name: cargo fmt --check
         run: cargo fmt --all -- --check
       - name: cargo clippy
