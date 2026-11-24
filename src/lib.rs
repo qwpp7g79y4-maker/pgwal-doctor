@@ -32,6 +32,7 @@ pub fn scan(datadir: Option<&Root>, source: Option<&dyn PgSource>) -> Report {
     let mut waldir_facts = checks::WaldirFacts::default();
     let mut inputs = checks::SummaryInputs::default();
     if let Some(root) = datadir {
+        findings.extend(checks::datadir(root));
         findings.extend(checks::wal_dir(root, &mut wal_facts));
         findings.extend(checks::archive_backlog(root, &mut backlog_facts));
         findings.extend(checks::pg_replslot(root));

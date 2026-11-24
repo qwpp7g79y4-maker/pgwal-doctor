@@ -110,10 +110,9 @@ fn non_utf8_file_name_does_not_panic() {
 }
 
 #[test]
-fn missing_pg_wal_is_not_present() {
+fn missing_pg_wal_is_a_datadir_error_not_a_quiet_report() {
     let tmp = TempDir::new("missing");
     let report = scan(Some(&Root::new(tmp.path())), None);
-    let finding = only(&report, "wal_dir");
-    assert_eq!(finding.status, Status::NotPresent);
-    assert_eq!(report.exit_code(), 0);
+    assert_eq!(only(&report, "datadir").status, Status::Error);
+    assert_eq!(report.exit_code(), 1);
 }

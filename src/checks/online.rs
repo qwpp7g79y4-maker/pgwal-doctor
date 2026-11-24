@@ -28,6 +28,14 @@ pub(crate) fn error_finding(check: &str, err: &SourceError, grant_hint: &str) ->
             format!("not available on this server version: {what}"),
             "",
         ),
+        SourceError::Malformed(message) => Finding::new(
+            check,
+            Status::Error,
+            None,
+            None,
+            format!("cannot read the psql output: {message}"),
+            "psql printed something other than the expected CSV table; use psql 12 or later (--csv), and check that PGWAL_DOCTOR_PSQL is a real psql",
+        ),
         SourceError::Other(message) => Finding::new(
             ONLINE,
             Status::Error,

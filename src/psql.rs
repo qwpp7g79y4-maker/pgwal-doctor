@@ -1,7 +1,9 @@
 //! Online source: one `psql` subprocess per query.
 //!
 //! Choice for v0.1: no Postgres crate, so no TLS stack and no extra
-//! dependencies. Cost: a `psql` binary on `PATH` and output parsing.
+//! dependencies. Cost: a `psql` binary (version 12 or later, for `--csv`) on
+//! `PATH` and output parsing. CSV keeps a tab or line break in a value, such
+//! as a prepared-transaction id, inside its cell.
 //! Connection settings come from the libpq environment (`PGHOST`,
 //! `PGUSER`, `PGPASSFILE`, ...) or from `--dsn`. A DSN that carries a
 //! password is refused so the password never sits in a process list.
@@ -76,13 +78,9 @@ impl PsqlSource {
             "-X",
             "-q",
             "-w",
-            "-A",
-            "-F",
-            "\t",
+            "--csv",
             "-P",
             "null=\\N",
-            "-P",
-            "footer=off",
             "-v",
             "ON_ERROR_STOP=1",
             "-v",
@@ -110,7 +108,7 @@ impl PsqlSource {
             ))
         })?;
         if output.status.success() {
-            return Rows::parse_tsv(&String::from_utf8_lossy(&output.stdout));
+            return Rows::parse_csv(&String::from_utf8_lossy(&output.stdout));
         }
         Err(classify_failure(
             &String::from_utf8_lossy(&output.stderr),
@@ -292,11 +290,39 @@ mod tests {
 
     #[test]
     fn successful_output_is_parsed() {
-        let (source, dir) =
-            script_source("ok", "printf 'name\\tsetting\\nmax_wal_size\\t\\\\N\\n'\n");
+        let (source, dir) = script_source("ok", "printf 'name,setting\\nmax_wal_size,\\\\N\\n'\n");
         let rows = source.settings().expect("rows");
         assert_eq!(rows.len(), 1);
         assert_eq!(rows.get(0, "setting"), crate::source::Cell::Null);
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn psql_is_asked_for_csv() {
+        let (source, dir) = script_source(
+            "args",
+            "printf '%s\\n' \"$@\" > \"$0.args\"\nprintf 'name,setting\\n'\n",
+        );
+        source.settings().expect("rows");
+        let args = fs::read_to_string(dir.join("fake-psql.sh.args")).expect("args");
+        assert!(args.lines().any(|arg| arg == "--csv"), "{args}");
+        assert!(!args.lines().any(|arg| arg == "-A"), "{args}");
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn quoted_tab_and_line_break_stay_in_their_cell() {
+        let (source, dir) = script_source(
+            "quoted",
+            "printf 'gid,prepared,owner,database,age_s\\n\"x\\t\\t0\\nfake,1,mallory,db,9\",2026-01-01,app,db,10\\n'\n",
+        );
+        let rows = source.prepared().expect("rows");
+        assert_eq!(rows.len(), 1);
+        assert_eq!(
+            rows.get(0, "gid"),
+            crate::source::Cell::Value("x\t\t0\nfake,1,mallory,db,9")
+        );
+        assert_eq!(rows.get(0, "owner"), crate::source::Cell::Value("app"));
         let _ = fs::remove_dir_all(dir);
     }
 

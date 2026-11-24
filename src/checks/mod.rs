@@ -2,6 +2,7 @@
 
 mod archive_backlog;
 mod archiver;
+mod datadir;
 mod online;
 mod settings;
 mod slots;
@@ -13,6 +14,7 @@ mod waldir;
 
 pub(crate) use archive_backlog::{check as archive_backlog, BacklogFacts};
 pub(crate) use archiver::check as archiver;
+pub(crate) use datadir::check as datadir;
 pub(crate) use settings::{check as settings, SettingsFacts};
 pub(crate) use slots::{check as slots, SlotFacts};
 pub(crate) use summary::{check as summary, Inputs as SummaryInputs};

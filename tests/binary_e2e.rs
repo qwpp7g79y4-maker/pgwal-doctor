@@ -34,7 +34,14 @@ case "$sql" in
   *pg_ls_waldir*) f=pg_ls_waldir ;;
   *) echo "unexpected query: $sql" >&2; exit 9 ;;
 esac
-cat "$FAKE_PSQL_DIR/$f.tsv"
+printf '%s\n' "$@" > "$FAKE_PSQL_DIR/args"
+# The stand-in prints what `psql --csv` prints: a `.csv` file as it is, or a
+# `.tsv` fixture with its tabs turned into commas.
+if [ -f "$FAKE_PSQL_DIR/$f.csv" ]; then
+  cat "$FAKE_PSQL_DIR/$f.csv"
+else
+  tr '\t' ',' < "$FAKE_PSQL_DIR/$f.tsv"
+fi
 "#;
 
 fn doctor() -> Command {
@@ -258,6 +265,7 @@ fn dangling_pg_wal_symlink_is_not_present() {
     let tmp = TempDir::new("dangling");
     let datadir = tmp.path().join("datadir");
     fs::create_dir(&datadir).expect("mkdir");
+    fs::write(datadir.join("PG_VERSION"), "16\n").expect("PG_VERSION");
     symlink("missing-wal", datadir.join("pg_wal")).expect("symlink");
     let out = doctor()
         .args(["--datadir", datadir.to_str().expect("utf-8")])
@@ -277,6 +285,7 @@ fn absolute_pg_wal_symlink_is_followed() {
     let absolute = fs::canonicalize(&store).expect("canonicalize");
     let datadir = tmp.path().join("datadir");
     fs::create_dir(&datadir).expect("mkdir");
+    fs::write(datadir.join("PG_VERSION"), "16\n").expect("PG_VERSION");
     symlink(&absolute, datadir.join("pg_wal")).expect("symlink");
     let out = doctor()
         .args(["--datadir", datadir.to_str().expect("utf-8")])
@@ -345,6 +354,7 @@ fn segment_mtime_before_the_epoch_is_still_counted() {
     let tmp = TempDir::new("mtime");
     let datadir = tmp.path().join("datadir");
     fs::create_dir(&datadir).expect("mkdir");
+    fs::write(datadir.join("PG_VERSION"), "16\n").expect("PG_VERSION");
     let wal = datadir.join("pg_wal");
     fs::create_dir(&wal).expect("pg_wal");
     let old = wal.join(SEGMENT);
@@ -378,6 +388,8 @@ fn control_characters_in_the_datadir_path_are_escaped() {
     let tmp = TempDir::new("controls");
     let weird = tmp.path().join("w\\x\n\r\u{1}");
     fs::create_dir(&weird).expect("mkdir");
+    fs::write(weird.join("PG_VERSION"), "16\n").expect("PG_VERSION");
+    fs::create_dir(weird.join("pg_wal")).expect("pg_wal");
     let out = doctor()
         .args(["--datadir", weird.to_str().expect("utf-8")])
         .output()
@@ -387,7 +399,7 @@ fn control_characters_in_the_datadir_path_are_escaped() {
     let report = text(&out);
     let evidence = report
         .lines()
-        .find(|line| line.starts_with("evidence:"))
+        .find(|line| line.starts_with("evidence:") && line.contains("does not exist"))
         .expect("evidence line");
     assert!(evidence.contains("w\\\\x\\n\\r\\u{1}"), "{evidence}");
     assert!(
@@ -796,4 +808,155 @@ fn closed_stdout_pipe_exits_2_without_panic() {
         "{}",
         err_text(&out)
     );
+}
+
+fn datadir_run(path: &Path) -> Output {
+    doctor()
+        .args(["--datadir", path.to_str().expect("utf-8")])
+        .output()
+        .expect("run")
+}
+
+#[test]
+fn datadir_that_does_not_exist_exits_1() {
+    let out = datadir_run(Path::new("/nonexistent/pgwal-doctor-test"));
+    assert_eq!(out.status.code(), Some(1), "{}", text(&out));
+    assert_no_panic(&out);
+    let report = text(&out);
+    assert!(report.contains("[Error] datadir"), "{report}");
+    assert!(
+        report.contains("not a PostgreSQL data directory: PG_VERSION and pg_wal not found"),
+        "{report}"
+    );
+}
+
+#[test]
+fn empty_directory_as_datadir_exits_1() {
+    let tmp = TempDir::new("empty-dir");
+    let out = datadir_run(tmp.path());
+    assert_eq!(out.status.code(), Some(1), "{}", text(&out));
+    assert!(text(&out).contains("[Error] datadir"), "{}", text(&out));
+}
+
+#[test]
+fn datadir_without_pg_wal_exits_1() {
+    let tmp = TempDir::new("no-wal");
+    fs::write(tmp.path().join("PG_VERSION"), "16\n").expect("PG_VERSION");
+    let out = datadir_run(tmp.path());
+    assert_eq!(out.status.code(), Some(1), "{}", text(&out));
+    let report = text(&out);
+    assert!(
+        report.contains("data directory: pg_wal not found"),
+        "{report}"
+    );
+}
+
+#[test]
+fn datadir_without_pg_version_exits_1() {
+    let tmp = TempDir::new("no-version");
+    fs::create_dir(tmp.path().join("pg_wal")).expect("pg_wal");
+    let out = datadir_run(tmp.path());
+    assert_eq!(out.status.code(), Some(1), "{}", text(&out));
+    let report = text(&out);
+    assert!(
+        report.contains("data directory: PG_VERSION not found"),
+        "{report}"
+    );
+}
+
+#[test]
+fn real_datadir_with_a_missing_optional_part_stays_not_present_and_exits_0() {
+    let tmp = TempDir::new("optional-missing");
+    fs::write(tmp.path().join("PG_VERSION"), "16\n").expect("PG_VERSION");
+    fs::create_dir(tmp.path().join("pg_wal")).expect("pg_wal");
+    let out = datadir_run(tmp.path());
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out));
+    let report = text(&out);
+    assert!(report.contains("[NotPresent] archive_backlog"), "{report}");
+    assert!(report.contains("[NotPresent] pg_replslot"), "{report}");
+    assert!(!report.contains("[Error]"), "{report}");
+}
+
+#[test]
+fn psql_is_called_with_csv() {
+    let online = Online::new("csv-flag");
+    let out = online.run(&["--online"]);
+    assert_no_panic(&out);
+    let args = fs::read_to_string(online.tmp.path().join("args")).expect("args");
+    assert!(args.lines().any(|arg| arg == "--csv"), "{args}");
+}
+
+#[test]
+fn tab_and_newline_in_a_prepared_gid_do_not_forge_a_row() {
+    let online = Online::new("gid-spoof");
+    // The report's attack: a gid that looks like `x<TABs>0<LF>fake<TAB>...mallory...`.
+    online.set(
+        "pg_prepared_xacts.csv",
+        "gid,prepared,owner,database,age_s\n\
+         \"x\t\t\t\t0\nfake\t2026-01-01\tmallory\tdb\t99999\",2026-01-01 00:00:00+00,app,appdb,10\n",
+    );
+    online.set(
+        "pg_settings.csv",
+        "name,setting,unit,source\nmax_prepared_transactions,10,\\N,default\n",
+    );
+    let out = online.run(&["--online"]);
+    assert_no_panic(&out);
+    let report = text(&out);
+    // The whole text is one gid (escaped), owned by `app`; no row of `mallory`.
+    assert!(!report.contains("owner mallory"), "{report}");
+    assert!(!report.contains("prepared 99999 s"), "{report}");
+    assert!(report.contains("(owner app, database appdb)"), "{report}");
+    assert!(report.contains("gid x\\t\\t\\t\\t0\\nfake"), "{report}");
+    assert!(!report.contains("[Error]"), "{report}");
+    assert!(report.contains("1 prepared transaction(s)"), "{report}");
+}
+
+#[test]
+fn tab_in_usename_does_not_break_the_sessions_check() {
+    let online = Online::new("usename-tab");
+    online.set(
+        "pg_stat_activity.csv",
+        "pid,usename,state,xact_start,backend_xmin,xact_age_s\n\
+         7,\"a\tb\nc\",idle in transaction,2026-01-01 00:00:00+00,\\N,10\n",
+    );
+    let out = online.run(&["--online"]);
+    assert_no_panic(&out);
+    let report = text(&out);
+    assert!(!report.contains("[Error]"), "{report}");
+    assert!(!report.contains("expected"), "{report}");
+}
+
+#[test]
+fn line_break_in_archive_command_does_not_break_the_settings() {
+    let online = Online::new("archive-command-lf");
+    online.set(
+        "pg_settings.csv",
+        "name,setting,unit,source\n\
+         archive_command,\"cp a\n cp b\",\\N,configuration file\n\
+         archive_mode,on,\\N,configuration file\n\
+         max_prepared_transactions,0,\\N,default\n\
+         max_wal_size,1,MB,default\n",
+    );
+    let out = online.run(&["--online"]);
+    assert_no_panic(&out);
+    let report = text(&out);
+    assert!(!report.contains("[Error]"), "{report}");
+    assert!(!report.contains("expected"), "{report}");
+    assert!(!report.contains("PG* environment"), "{report}");
+    // The checks after the settings did see the settings.
+    assert!(report.contains("max_prepared_transactions"), "{report}");
+}
+
+#[test]
+fn unreadable_psql_output_names_its_cause_not_the_environment() {
+    let online = Online::new("broken-csv");
+    online.set("pg_settings.csv", "name,setting\n\"never closed,1\n");
+    let out = online.run(&["--online"]);
+    assert_no_panic(&out);
+    let report = text(&out);
+    assert!(report.contains("[Error] settings"), "{report}");
+    assert!(report.contains("cannot read the psql output"), "{report}");
+    assert!(report.contains("quoted value"), "{report}");
+    assert!(!report.contains("PG* environment"), "{report}");
+    assert_eq!(out.status.code(), Some(1));
 }

@@ -96,7 +96,8 @@ case "$sql" in
   *pg_ls_waldir*) f=pg_ls_waldir ;;
   *) echo "unexpected query: $sql" >&2; exit 9 ;;
 esac
-cat "$FAKE_PSQL_DIR/$f.tsv"
+# psql --csv: the tab-separated fixtures with commas.
+tr '\t' ',' < "$FAKE_PSQL_DIR/$f.tsv"
 "#;
 
 #[cfg(unix)]

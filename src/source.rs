@@ -1,9 +1,10 @@
 //! Answers from a live PostgreSQL, behind a trait so tests never need one.
 //!
-//! Every method is one read-only query. Results are plain tab-separated
-//! tables: a header line, then one line per row, `\N` for SQL NULL. That is
-//! what `psql -A -F <tab> -P null='\N'` prints and what the fixture files
-//! under `tests/fixtures/pg` contain.
+//! Every method is one read-only query. `psql --csv -P null='\N'` prints a
+//! header record and one record per row, with quoting, so a tab, a comma or a
+//! line break inside a value stays inside its cell. The fixture files under
+//! `tests/fixtures/pg` are plain tab-separated tables with the same header,
+//! rows and `\N` for SQL NULL.
 
 use std::fmt;
 use std::fs;
@@ -17,7 +18,10 @@ pub enum SourceError {
     PermissionDenied,
     /// The view, function or column does not exist on this server version.
     Missing(String),
-    /// Anything else: connection failure, unparsable output, ...
+    /// `psql` ran but its output is not a readable table (broken CSV,
+    /// a cut-off result).
+    Malformed(String),
+    /// Anything else: connection failure, missing program, ...
     Other(String),
 }
 
@@ -26,7 +30,7 @@ impl fmt::Display for SourceError {
         match self {
             Self::PermissionDenied => f.write_str("permission denied"),
             Self::Missing(what) => write!(f, "not available on this server: {what}"),
-            Self::Other(message) => f.write_str(message),
+            Self::Malformed(message) | Self::Other(message) => f.write_str(message),
         }
     }
 }
@@ -59,8 +63,8 @@ pub struct Rows {
 }
 
 impl Rows {
-    /// Parse tab-separated psql output. An empty text, or a row whose cell
-    /// count differs from the header, is an error.
+    /// Parse tab-separated text (the fixture files). An empty text, or a row
+    /// whose cell count differs from the header, is an error.
     pub fn parse_tsv(text: &str) -> Result<Self, SourceError> {
         let mut lines = text.lines();
         let header = match lines.next() {
@@ -68,27 +72,52 @@ impl Rows {
             _ => return Err(SourceError::Other("empty output: no header line".into())),
         };
         let columns: Vec<String> = header.split('\t').map(str::to_string).collect();
+        let records = lines
+            .map(|line| {
+                line.split('\t')
+                    .map(|cell| (cell.to_string(), false))
+                    .collect()
+            })
+            .collect();
+        Self::from_records(columns, records)
+    }
+
+    /// Parse `psql --csv` output: RFC 4180 quoting, `\N` (unquoted) is SQL
+    /// NULL. Quoted cells may hold commas, tabs, quotes and line breaks.
+    pub fn parse_csv(text: &str) -> Result<Self, SourceError> {
+        let mut records = csv_records(text)?;
+        if records.is_empty() || (records[0].len() == 1 && records[0][0].0.is_empty()) {
+            return Err(SourceError::Other("empty output: no header line".into()));
+        }
+        let columns = records
+            .remove(0)
+            .into_iter()
+            .map(|(name, _)| name)
+            .collect();
+        Self::from_records(columns, records)
+    }
+
+    /// Records are `(text, was_quoted)` cells; only an unquoted `\N` is NULL.
+    fn from_records(
+        columns: Vec<String>,
+        records: Vec<Vec<(String, bool)>>,
+    ) -> Result<Self, SourceError> {
         let mut rows = Vec::new();
-        for (index, line) in lines.enumerate() {
-            let cells: Vec<Option<String>> = line
-                .split('\t')
-                .map(|cell| {
-                    if cell == "\\N" {
-                        None
-                    } else {
-                        Some(cell.to_string())
-                    }
-                })
-                .collect();
-            if cells.len() != columns.len() {
-                return Err(SourceError::Other(format!(
-                    "row {}: expected {} cells, got {}",
+        for (index, record) in records.into_iter().enumerate() {
+            if record.len() != columns.len() {
+                return Err(SourceError::Malformed(format!(
+                    "row {}: expected {} cells, got {}; the psql output is not the table that was asked for",
                     index + 1,
                     columns.len(),
-                    cells.len()
+                    record.len()
                 )));
             }
-            rows.push(cells);
+            rows.push(
+                record
+                    .into_iter()
+                    .map(|(cell, quoted)| (quoted || cell != "\\N").then_some(cell))
+                    .collect(),
+            );
         }
         Ok(Self { columns, rows })
     }
@@ -135,6 +164,67 @@ pub trait PgSource {
     fn settings(&self) -> Result<Rows, SourceError>;
     /// `pg_ls_waldir()`.
     fn waldir(&self) -> Result<Rows, SourceError>;
+}
+
+/// Split CSV text into records of `(cell, was_quoted)`. A line break ends a
+/// record only outside quotes. A final line break does not start a record.
+fn csv_records(text: &str) -> Result<Vec<Vec<(String, bool)>>, SourceError> {
+    let mut records = Vec::new();
+    let mut record: Vec<(String, bool)> = Vec::new();
+    let mut cell = String::new();
+    let mut quoted = false;
+    let mut in_quotes = false;
+    let mut pending = false; // something of the current record was read
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        pending = true;
+        if in_quotes {
+            if c == '"' {
+                if chars.peek() == Some(&'"') {
+                    chars.next();
+                    cell.push('"');
+                } else {
+                    in_quotes = false;
+                }
+            } else {
+                cell.push(c);
+            }
+            continue;
+        }
+        match c {
+            '"' if cell.is_empty() && !quoted => {
+                in_quotes = true;
+                quoted = true;
+            }
+            '"' => {
+                return Err(SourceError::Malformed(
+                    "the psql CSV output has a stray quote inside a value".into(),
+                ))
+            }
+            ',' => record.push((std::mem::take(&mut cell), std::mem::take(&mut quoted))),
+            '\n' => {
+                record.push((std::mem::take(&mut cell), std::mem::take(&mut quoted)));
+                records.push(std::mem::take(&mut record));
+                pending = false;
+            }
+            _ if quoted => {
+                return Err(SourceError::Malformed(
+                    "the psql CSV output has text after a closing quote".into(),
+                ))
+            }
+            _ => cell.push(c),
+        }
+    }
+    if in_quotes {
+        return Err(SourceError::Malformed(
+            "the psql CSV output ends inside a quoted value (cut-off output)".into(),
+        ));
+    }
+    if pending {
+        record.push((cell, quoted));
+        records.push(record);
+    }
+    Ok(records)
 }
 
 /// Reads `<dir>/<view>.tsv`. A `<view>.denied` file stands for SQLSTATE
@@ -266,9 +356,11 @@ mod tests {
     #[test]
     fn invalid_row_and_empty_output_are_errors() {
         let err = Rows::parse_tsv("a\tb\n1\n").expect_err("short row");
-        assert_eq!(
-            err,
-            SourceError::Other("row 1: expected 2 cells, got 1".into())
+        assert!(matches!(err, SourceError::Malformed(_)), "{err:?}");
+        assert!(
+            err.to_string()
+                .starts_with("row 1: expected 2 cells, got 1"),
+            "{err}"
         );
         assert!(Rows::parse_tsv("").is_err());
         assert!(Rows::parse_tsv("a\tb\n1\t2\t3\n").is_err());
@@ -403,5 +495,32 @@ mod tests {
         );
 
         let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn csv_keeps_tab_comma_quote_and_newline_in_a_cell() {
+        let rows =
+            Rows::parse_csv("a,b,c\n\"x\ty,\"\"q\"\"\nz\",2,\\N\n\"\\N\",,\"\"\n").expect("parse");
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows.get(0, "a"), Cell::Value("x\ty,\"q\"\nz"));
+        assert_eq!(rows.get(0, "b"), Cell::Value("2"));
+        assert_eq!(rows.get(0, "c"), Cell::Null);
+        // A quoted `\N` is the text `\N`; empty cells are empty strings.
+        assert_eq!(rows.get(1, "a"), Cell::Value("\\N"));
+        assert_eq!(rows.get(1, "b"), Cell::Value(""));
+        assert_eq!(rows.get(1, "c"), Cell::Value(""));
+    }
+
+    #[test]
+    fn csv_header_only_and_bad_input() {
+        assert_eq!(Rows::parse_csv("a,b\n").expect("parse").len(), 0);
+        assert!(Rows::parse_csv("").is_err());
+        let cut = Rows::parse_csv("a\n\"open\n").expect_err("cut off");
+        assert!(matches!(cut, SourceError::Malformed(_)), "{cut:?}");
+        assert!(cut.to_string().contains("quoted value"), "{cut}");
+        let short = Rows::parse_csv("a,b\n1\n").expect_err("short row");
+        assert!(matches!(short, SourceError::Malformed(_)), "{short:?}");
+        assert!(Rows::parse_csv("a\nx\"y\n").is_err());
+        assert!(Rows::parse_csv("a\n\"x\"y\n").is_err());
     }
 }
