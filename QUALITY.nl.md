@@ -6,7 +6,7 @@ Gemeten op 2026-11-24, Linux x86_64, Rust 1.99.0.
 
 ## Geteste commit
 
-Codecommit `5f23ba13285809bce008c21dd0d079b37d422dfd`, de laatste commit die
+Codecommit `8bd800384010bf3b3cee5926d3f7c925d83e4d61`, de laatste commit die
 iets anders wijzigt dan documenten. Commits daarna wijzigen alleen documenten
 (README, CHANGELOG, QUALITY, CONTRIBUTING, KEUR-NVT).
 
@@ -14,25 +14,31 @@ iets anders wijzigt dan documenten. Commits daarna wijzigen alleen documenten
 
 | Controle | Resultaat |
 |---|---|
-| `cargo test --locked` | 116 geslaagd, 0 mislukt |
+| `cargo test --locked` | 130 geslaagd, 0 mislukt |
 | `cargo fmt --all -- --check` | schoon |
 | `cargo clippy --all-targets --locked -- -D warnings` | geen waarschuwingen |
 | `cargo clippy --tests --locked --target x86_64-pc-windows-gnu -- -D warnings` | geen waarschuwingen |
 | `cargo check --tests --locked --target x86_64-pc-windows-gnu` | ok |
 | `cargo deny check licenses` | `licenses ok` |
 
-De 116 tests zijn 30 unit-tests en 86 integratietests, opgeteld over alle
+De 130 tests zijn 34 unit-tests en 96 integratietests, opgeteld over alle
 resultaatregels van `cargo test`. Ze gebruiken met de hand geschreven fixtures
 en een nep-`psql`; er was geen PostgreSQL-server bij betrokken.
 
 ## Rode cargo-regel op de vorige tip
 
-Op `12be42a`, de commit vóór de herstellingen:
+Op `d1e0e3d`, de tip vóór deze herstelling (de tests van deze commit, de oude bron):
 
-| Controle | Resultaat op `12be42a` |
+| Controle | Resultaat op `d1e0e3d` |
 |---|---|
-| `cargo check --tests --locked --target x86_64-pc-windows-gnu` | **mislukt**: 10 testdoelen compileerden niet (`cannot find unix in os`, `from_mode`, `from_vec`) |
-| `cargo test --locked --no-fail-fast`, met de nieuwe tests en de oude bron | **mislukt**: 3 archivertests (Duitse datum, zomertijdgrens, geen vergelijking van de server) en 3 binarytests (volle stdout, dichte pijp, gecodeerde wachtwoordsleutel) |
+| `cargo test --locked --no-fail-fast` | **mislukt**: 110 geslaagd, 16 mislukt (eigen target-map) |
+
+De 16 rode tests: de 4 nieuwe `--datadir`-tests (`/nonexistent`, lege map,
+geen `pg_wal`, geen `PG_VERSION`) en de aangepaste `wal_dir`-test; de nieuwe
+nep-`psql`-tests voor B-2 (tab en regeleinde in een gid, een gebruikersnaam en
+een `archive_command`, kapotte CSV, `--csv` in de argumenten); en 6 oudere
+tests waarvan de `psql`-nepper nu CSV uitgeeft, wat de oude tabparser niet kan
+lezen. Op deze commit zijn alle 130 groen.
 
 De Windows-controle is alleen een compileercontrole. De unix-tests (symlinks,
 bestandsrechten, `sh`-nepprogramma's; `tests/wal_dir.rs`,
@@ -48,6 +54,9 @@ blijven op Windows weg.
 - `cargo audit`: niet uitgevoerd (het heeft netwerk nodig voor de
   advisory-database).
 - Bouwen met Rust 1.85 (het opgegeven minimum): niet uitgevoerd.
+- `psql --csv` tegen een echte PostgreSQL-server: niet uitgevoerd. De
+  CSV-parser en de argumenten zijn getest met een nepper die met de hand CSV
+  uitgeeft; de exacte bytes van een echte `psql` 12+ zijn niet vergeleken.
 - Een run tegen een echte PostgreSQL-server: niet uitgevoerd. De nieuwe query
   met `failed_after_archived` is met de hand geschreven en niet op een server
   geprobeerd.

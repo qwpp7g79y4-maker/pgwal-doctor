@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- `--datadir` on a path that is not a data directory (no `PG_VERSION` or no
+  `pg_wal`, such as `/nonexistent` or `/tmp`) is an `Error` finding and exits
+  1, no longer three `NotPresent` lines and exit 0. `NotPresent` stays for a
+  real data directory in which an optional part is missing.
+- `psql` is run with `--csv` instead of tab-separated output. A tab or line
+  break in a prepared-transaction id, a user name or an `archive_command` stays
+  inside its cell: it can no longer forge a row or break the settings. Output
+  that is not a readable table is its own `Error` that names the cause. This
+  needs `psql` 12 or later.
 - The test targets compile for Windows: the Unix-only tests (symlinks, file
   modes, `sh` stand-ins) are marked `cfg(unix)` and run on Unix only.
 - A full or closed stdout no longer panics: the report is written to a stdout

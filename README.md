@@ -57,7 +57,7 @@ cargo install --path .
 ```
 
 Or run `cargo build --release` and use `target/release/pgwal-doctor`. Online
-mode also needs `psql` on `PATH`.
+mode also needs `psql` (version 12 or later) on `PATH`.
 
 ## Quick start
 
@@ -89,7 +89,8 @@ pgwal-doctor --help                                           # usage, exit 0
 pgwal-doctor --version                                        # version, exit 0
 ```
 
-Online mode needs `psql` on `PATH` (or set `PGWAL_DOCTOR_PSQL`). Connection
+Online mode needs `psql` (version 12 or later, it is run with `--csv`) on
+`PATH` (or set `PGWAL_DOCTOR_PSQL`). Connection
 settings come from `--dsn` or the usual `PG*` environment variables. Online
 mode starts only on `--dsn` or `--online`.
 
@@ -127,7 +128,7 @@ The exit code is `0`.
 | Code | Meaning |
 |---|---|
 | `0` | Nothing actionable. |
-| `1` | A check reported `Warn`, `NeedsRoot` or `Error` (a failing connection is an `Error`). |
+| `1` | A check reported `Warn`, `NeedsRoot` or `Error`. A failing connection is an `Error`, and so is a `--datadir` that is not a data directory (no `PG_VERSION` or no `pg_wal`). |
 | `2` | Usage error. |
 
 ## Permissions

@@ -56,6 +56,13 @@ also exit 0.
 .B 1
 A check reported Warn, NeedsRoot, or Error.
 A refused DSN and a failing connection are Error findings.
+A
+.B --datadir
+that is not a data directory (no
+.I PG_VERSION
+or no
+.IR pg_wal )
+is an Error finding too, so it exits 1.
 .TP
 .B 2
 Usage error: an unknown option, or none of

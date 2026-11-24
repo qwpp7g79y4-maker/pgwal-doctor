@@ -59,7 +59,7 @@ cargo install --path .
 ```
 
 Of draai `cargo build --release` en gebruik `target/release/pgwal-doctor`.
-Online heeft ook `psql` nodig op `PATH`.
+Online heeft ook `psql` (versie 12 of nieuwer) nodig op `PATH`.
 
 ## Snelstart
 
@@ -91,7 +91,8 @@ pgwal-doctor --help                                           # gebruik, exitcod
 pgwal-doctor --version                                        # versie, exitcode 0
 ```
 
-Online heeft `psql` nodig op `PATH` (of zet `PGWAL_DOCTOR_PSQL`).
+Online heeft `psql` (versie 12 of nieuwer, het draait met `--csv`) nodig op
+`PATH` (of zet `PGWAL_DOCTOR_PSQL`).
 Verbindingsinstellingen komen uit `--dsn` of de gewone `PG*`-variabelen.
 Online start alleen bij `--dsn` of `--online`.
 
@@ -130,7 +131,7 @@ De exitcode is `0`.
 | Code | Betekenis |
 |---|---|
 | `0` | Niets om op te handelen. |
-| `1` | Een check meldde `Warn`, `NeedsRoot` of `Error` (een mislukte verbinding is een `Error`). |
+| `1` | Een check meldde `Warn`, `NeedsRoot` of `Error`. Een mislukte verbinding is een `Error`, en een `--datadir` die geen datadirectory is (geen `PG_VERSION` of geen `pg_wal`) ook. |
 | `2` | Gebruiksfout. |
 
 ## Rechten
