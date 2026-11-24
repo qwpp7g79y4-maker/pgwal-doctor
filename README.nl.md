@@ -47,6 +47,39 @@ Online, via `psql` (`--dsn` of `--online`):
 - Het leest `pg_replslot/*/state` niet.
 - Offline maakt het geen netwerkverbinding. Online wel, via `psql`.
 
+## Installatie
+
+Er is geen crates.io-release (`publish = false`). Bouw de tool vanuit een
+kloon van de repository, met Rust 1.85 of nieuwer:
+
+```sh
+git clone https://github.com/qwpp7g79y4-maker/pgwal-doctor
+cd pgwal-doctor
+cargo install --path .
+```
+
+Of draai `cargo build --release` en gebruik `target/release/pgwal-doctor`.
+Online heeft ook `psql` nodig op `PATH`.
+
+## Snelstart
+
+```sh
+pgwal-doctor --datadir /var/lib/postgresql/17/main    # offline, leest alleen bestanden
+pgwal-doctor --online                                 # online, libpq-omgeving
+```
+
+## Aan de slag in 5 minuten
+
+1. Bouw de tool (zie Installatie).
+2. Probeer hem op de verzonnen datadir in deze repository. Hij leest een paar
+   verzonnen bestanden, maakt geen netwerkverbinding en schrijft niets:
+   `pgwal-doctor --datadir examples/quiet-datadir`. De exitcode is `0`.
+3. Wijs `--datadir` naar je eigen datadir, als gebruiker `postgres`.
+4. Maak voor de online checks de inlogrol onder "Rechten" en voeg
+   `--dsn 'host=db1 user=pgwal_doctor dbname=postgres'` toe.
+5. Lees de regel `hint:` onder elke bevinding. Drempels zijn aannames, geen
+   aanbevelingen (zie "Aannames en onbekenden").
+
 ## Gebruik
 
 ```sh
@@ -66,9 +99,38 @@ Een DSN met wachtwoord wordt geweigerd, zodat het wachtwoord niet in de
 procestabel staat. Gebruik `~/.pgpass` of `PGPASSWORD`. Verbindingsfouten
 worden zonder DSN getoond.
 
-Exitcode `0`: niets om op te handelen. `1`: een check meldde `Warn`,
-`NeedsRoot` of `Error` (een mislukte verbinding is een `Error`). `2`:
-gebruiksfout.
+## Voorbeeld
+
+Draai vanuit de hoofdmap van de repository; de datadir is verzonnen (zie
+[examples/README.md](examples/README.md)):
+
+```sh
+pgwal-doctor --datadir examples/quiet-datadir
+```
+
+Uitvoer, ingekort (het volledige rapport heeft onder elke bevinding een regel
+`hint:`):
+
+```text
+pgwal-doctor
+
+[Ok] summary bytes=47 count=-
+evidence: pg_wal holds 47 bytes. archive backlog (.ready): 0 bytes; other or unknown: 47 bytes. ...
+
+[Ok] wal_dir bytes=47 count=1
+[Ok] archive_backlog bytes=0 count=0
+[Ok] pg_replslot bytes=- count=0
+```
+
+De exitcode is `0`.
+
+## Afsluitcodes
+
+| Code | Betekenis |
+|---|---|
+| `0` | Niets om op te handelen. |
+| `1` | Een check meldde `Warn`, `NeedsRoot` of `Error` (een mislukte verbinding is een `Error`). |
+| `2` | Gebruiksfout. |
 
 ## Rechten
 
@@ -149,6 +211,14 @@ Bronnen voor de oorzaken: [WAL configuration](https://www.postgresql.org/docs/17
 [replication settings](https://www.postgresql.org/docs/17/runtime-config-replication.html).
 De pagina's zijn via een samenvattende stap gelezen; controleer een citaat
 tegen de pagina voordat je erop vertrouwt.
+
+## Onderhoud
+
+pgwal-doctor is een klein project zonder releaseschema. Meld bugs en vragen
+als GitHub Issues; zie [CONTRIBUTING.md](CONTRIBUTING.md). Wijzigingen staan
+in [CHANGELOG.md](CHANGELOG.md), beveiligingsmeldingen volgen
+[SECURITY.md](SECURITY.md), en wat getest is, en wat niet, staat in
+[QUALITY.nl.md](QUALITY.nl.md).
 
 ## Tests
 

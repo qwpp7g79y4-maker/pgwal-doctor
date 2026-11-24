@@ -12,6 +12,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `examples/quiet-datadir`, a fictional offline data directory, and
   `examples/README.md` with the command and its exit code.
 - README (English and Dutch) names `--help`, `--version`, and the manual page.
+- README (English and Dutch): sections Installation, Quick start, a
+  five-minute walkthrough, Example, Exit codes and Maintenance.
+- `CONTRIBUTING.md` (contributions start with an Issue), `QUALITY.md` and
+  `QUALITY.nl.md` (test count, tested commit, what was not run), and
+  `KEUR-NVT.md` (modules this tool does not have, with the reason).
+- Test `tests/doc_headings.rs`: both READMEs keep the same sections.
 
 ## [0.1.0] - unreleased
 

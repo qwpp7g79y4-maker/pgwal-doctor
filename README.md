@@ -45,6 +45,39 @@ Online, through `psql` (`--dsn` or `--online`):
 - It does not open a network connection in offline mode. Online mode does,
   through `psql`.
 
+## Installation
+
+There is no crates.io release (`publish = false`). Build it from a clone of
+the repository with Rust 1.85 or newer:
+
+```sh
+git clone https://github.com/qwpp7g79y4-maker/pgwal-doctor
+cd pgwal-doctor
+cargo install --path .
+```
+
+Or run `cargo build --release` and use `target/release/pgwal-doctor`. Online
+mode also needs `psql` on `PATH`.
+
+## Quick start
+
+```sh
+pgwal-doctor --datadir /var/lib/postgresql/17/main    # offline, reads files only
+pgwal-doctor --online                                 # online, libpq environment
+```
+
+## Aan de slag in 5 minuten
+
+1. Build the tool (see Installation).
+2. Try it on the fictional data directory in this repository. It reads a few
+   invented files, opens no network connection, and writes nothing:
+   `pgwal-doctor --datadir examples/quiet-datadir`. The exit code is `0`.
+3. Point `--datadir` at your own data directory, as the `postgres` user.
+4. For the online checks, create the login role under "Permissions" and add
+   `--dsn 'host=db1 user=pgwal_doctor dbname=postgres'`.
+5. Read the `hint:` line under each finding. Thresholds are assumptions, not
+   recommendations (see "Assumptions and unknowns").
+
 ## Usage
 
 ```sh
@@ -64,8 +97,37 @@ A DSN that contains a password is refused, so the password never sits in a
 process list. Use `~/.pgpass` or `PGPASSWORD`. Connection errors are shown
 without the DSN.
 
-Exit code `0`: nothing actionable. `1`: a check reported `Warn`,
-`NeedsRoot` or `Error` (a failing connection is an `Error`). `2`: usage error.
+## Example
+
+Run from the repository root; the data directory is fictional (see
+[examples/README.md](examples/README.md)):
+
+```sh
+pgwal-doctor --datadir examples/quiet-datadir
+```
+
+Output, shortened (the full report has a `hint:` line under each finding):
+
+```text
+pgwal-doctor
+
+[Ok] summary bytes=47 count=-
+evidence: pg_wal holds 47 bytes. archive backlog (.ready): 0 bytes; other or unknown: 47 bytes. ...
+
+[Ok] wal_dir bytes=47 count=1
+[Ok] archive_backlog bytes=0 count=0
+[Ok] pg_replslot bytes=- count=0
+```
+
+The exit code is `0`.
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Nothing actionable. |
+| `1` | A check reported `Warn`, `NeedsRoot` or `Error` (a failing connection is an `Error`). |
+| `2` | Usage error. |
 
 ## Permissions
 
@@ -146,6 +208,14 @@ Sources for the causes: [WAL configuration](https://www.postgresql.org/docs/17/w
 [replication settings](https://www.postgresql.org/docs/17/runtime-config-replication.html).
 The pages were read through a summarising step, so check a quotation against
 the page before relying on it.
+
+## Maintenance
+
+pgwal-doctor is a small project without a release schedule. Report bugs and
+questions as GitHub Issues; see [CONTRIBUTING.md](CONTRIBUTING.md). Changes
+are listed in [CHANGELOG.md](CHANGELOG.md), security reports go as described
+in [SECURITY.md](SECURITY.md), and what was tested, and what was not, is in
+[QUALITY.md](QUALITY.md).
 
 ## Tests
 
