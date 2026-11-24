@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- The test targets compile for Windows: the Unix-only tests (symlinks, file
+  modes, `sh` stand-ins) are marked `cfg(unix)` and run on Unix only.
+- A full or closed stdout no longer panics: the report is written to a stdout
+  lock, and a write error gives exit code 2 with a message on stderr.
+- A DSN with a percent-encoded `password` key in the URI query
+  (`?pass%77ord=x`) is refused like a plain one.
+- The archiver check no longer compares the displayed timestamps as text: the
+  server compares `last_failed_time` and `last_archived_time`
+  (`failed_after_archived`). Without that column, counted failures give a
+  warning instead of `Ok`.
+
 ### Added
 
 - Manual page `man/pgwal-doctor.1`, aligned with `pgwal-doctor --help`.

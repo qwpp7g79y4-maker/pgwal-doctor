@@ -96,8 +96,9 @@ Verbindingsinstellingen komen uit `--dsn` of de gewone `PG*`-variabelen.
 Online start alleen bij `--dsn` of `--online`.
 
 Een DSN met wachtwoord wordt geweigerd, zodat het wachtwoord niet in de
-procestabel staat. Gebruik `~/.pgpass` of `PGPASSWORD`. Verbindingsfouten
-worden zonder DSN getoond.
+procestabel staat. De sleutels van een URI-query worden eerst van procenten
+ontdaan, dus ook `?pass%77ord=x` wordt geweigerd. Verbindingsfouten worden
+zonder DSN getoond.
 
 ## Voorbeeld
 
@@ -197,6 +198,13 @@ docs-pagina. De tool en deze README noemen ze aannames.
   aanname.
 - Hoe `wal_level`, `archive_timeout` of een trage standby de groei
   beïnvloeden is **onbekend**; de tool controleert ze niet.
+- Of de laatste archiverfout nieuwer is dan het laatst gearchiveerde WAL,
+  beslist de server, die de twee `timestamptz`-waarden vergelijkt
+  (`failed_after_archived`). De tool vergelijkt nooit de getoonde tekst, die
+  van `DateStyle` en de tijdzone afhangt. Deze query is met de hand geschreven
+  en niet tegen een echte server gedraaid. Geeft de server geen vergelijking
+  en zijn er mislukkingen geteld, dan is de bevinding een waarschuwing die dat
+  zegt.
 - `pg_stat_archiver` kan schoon zijn terwijl archiveren faalt: als het
   commando door een signaal eindigt of een exitcode boven 125 geeft, herstart
   de archiver en wordt het falen niet geteld

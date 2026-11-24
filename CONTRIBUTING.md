@@ -23,7 +23,10 @@ cargo clippy --all-targets -- -D warnings
 cargo test
 ```
 
-The tests need no PostgreSQL. A change in behaviour comes with a test, and a
+The tests need no PostgreSQL. The tests that use symlinks, file modes or an
+`sh` stand-in for `psql` (`tests/wal_dir.rs`, `tests/binary_e2e.rs` and part of
+`tests/cli.rs`) are marked `cfg(unix)`: they run on Unix only and are left out
+on Windows, where the other tests still compile and run. A change in behaviour comes with a test, and a
 change in an option comes with an update of `man/pgwal-doctor.1` and both
 READMEs. `tests/doc_headings.rs` checks that README.md and README.nl.md keep
 the same sections and that this file points to Issues and to SECURITY.md.

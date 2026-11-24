@@ -94,8 +94,9 @@ settings come from `--dsn` or the usual `PG*` environment variables. Online
 mode starts only on `--dsn` or `--online`.
 
 A DSN that contains a password is refused, so the password never sits in a
-process list. Use `~/.pgpass` or `PGPASSWORD`. Connection errors are shown
-without the DSN.
+process list. Use `~/.pgpass` or `PGPASSWORD`. The keys of a URI query are
+percent-decoded first, so `?pass%77ord=x` is refused too. Connection errors are
+shown without the DSN.
 
 ## Example
 
@@ -194,6 +195,12 @@ tool and this README state them as assumptions.
 - That slow or failing checkpoints delay the cleanup of old WAL is an assumption.
 - How `wal_level`, `archive_timeout` or a slow standby affect growth is
   **unknown**; the tool does not check them.
+- Whether the last archiver failure is newer than the last archived WAL is
+  decided by the server, which compares the two `timestamptz` values
+  (`failed_after_archived`). The tool never compares the displayed text, which
+  depends on `DateStyle` and the time zone. This query is hand-written and was
+  not run against a real server. If the server gives no comparison and
+  failures are counted, the finding is a warning that says so.
 - `pg_stat_archiver` can be clean while archiving fails: if the command is
   killed by a signal or exits above 125, the archiver restarts and the
   failure is not counted
