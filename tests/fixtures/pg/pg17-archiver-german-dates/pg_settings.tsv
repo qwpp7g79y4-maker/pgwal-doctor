@@ -1,0 +1,12 @@
+name	setting	unit	source
+archive_command	false	\N	configuration file
+archive_library		\N	default
+archive_mode	on	\N	configuration file
+checkpoint_timeout	300	s	default
+max_prepared_transactions	0	\N	default
+max_slot_wal_keep_size	-1	MB	configuration file
+max_wal_size	1024	MB	default
+min_wal_size	80	MB	default
+server_version_num	170004	\N	default
+wal_keep_size	0	MB	configuration file
+wal_segment_size	16777216	B	override

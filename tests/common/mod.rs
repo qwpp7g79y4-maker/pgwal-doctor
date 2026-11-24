@@ -2,7 +2,6 @@
 #![allow(dead_code)]
 
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -44,7 +43,12 @@ impl Drop for TempDir {
     }
 }
 
+#[cfg(not(unix))]
+fn restore_permissions(_path: &Path) {}
+
+#[cfg(unix)]
 fn restore_permissions(path: &Path) {
+    use std::os::unix::fs::PermissionsExt;
     let Ok(meta) = fs::symlink_metadata(path) else {
         return;
     };

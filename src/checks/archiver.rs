@@ -74,12 +74,19 @@ pub(crate) fn check(
 
     let mut status = Status::Ok;
     let mut reasons: Vec<String> = Vec::new();
-    // Both timestamps come from one row in one session time zone, so a text
-    // comparison orders them (assumption: same offset in both values).
-    let failing = failed > 0
-        && last_failed_time.is_some_and(|failed_at| {
-            last_archived_time.is_none_or(|archived_at| failed_at > archived_at)
-        });
+    // The server compares the two timestamptz values (`failed_after_archived`,
+    // see `ARCHIVER_SQL`). The displayed text depends on DateStyle and on the
+    // time zone offset, so it is never compared here.
+    let comparison = rows.get(0, "failed_after_archived").value();
+    let failing = failed > 0 && comparison == Some("t");
+    if failed > 0 && !matches!(comparison, Some("t" | "f")) {
+        status = Status::Warn;
+        reasons.push(format!(
+            "{failed} failures are counted, but the server gave no comparison of \
+             last_failed_time and last_archived_time, so it is not known whether the last \
+             failure is newer than the last archive"
+        ));
+    }
     if failing {
         status = Status::Warn;
         reasons.push(format!(

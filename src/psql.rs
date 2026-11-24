@@ -13,7 +13,12 @@ use crate::source::{PgSource, Rows, SourceError};
 
 const SLOTS_SQL: &str =
     "SELECT *, pg_current_wal_lsn() AS current_lsn FROM pg_replication_slots ORDER BY slot_name";
-const ARCHIVER_SQL: &str = "SELECT * FROM pg_stat_archiver";
+// The server compares the two timestamps: their text form depends on DateStyle
+// and on the time zone offset, so it cannot be compared as text.
+const ARCHIVER_SQL: &str = "SELECT *, CASE WHEN last_failed_time IS NULL THEN false \
+     WHEN last_archived_time IS NULL THEN true \
+     ELSE last_failed_time > last_archived_time END AS failed_after_archived \
+     FROM pg_stat_archiver";
 const ACTIVITY_SQL: &str = "SELECT pid, usename, state, xact_start, backend_xmin, \
      extract(epoch FROM (now() - xact_start))::bigint AS xact_age_s \
      FROM pg_stat_activity WHERE backend_type = 'client backend' AND pid <> pg_backend_pid() \
@@ -135,8 +140,41 @@ impl PgSource for PsqlSource {
     }
 }
 
+/// Decode `%XX` escapes. A `%` without two hex digits stays as it is.
+fn percent_decode(text: &str) -> String {
+    let bytes = text.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        let hex = |b: u8| (b as char).to_digit(16);
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            if let (Some(hi), Some(lo)) = (hex(bytes[i + 1]), hex(bytes[i + 2])) {
+                out.push((hi * 16 + lo) as u8);
+                i += 3;
+                continue;
+            }
+        }
+        out.push(bytes[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
 /// True when a libpq key/value string or URI carries a password.
+///
+/// libpq decodes `%XX` in the keys of a URI query, so `pass%77ord=x` is a
+/// password. The query keys are decoded before they are compared.
 pub fn dsn_has_password(dsn: &str) -> bool {
+    if let Some((_, tail)) = dsn.split_once("://") {
+        if let Some((_, query)) = tail.split_once('?') {
+            for pair in query.split('&') {
+                let key = pair.split_once('=').map_or(pair, |(key, _)| key);
+                if percent_decode(key).trim().eq_ignore_ascii_case("password") {
+                    return true;
+                }
+            }
+        }
+    }
     let lower = dsn.to_ascii_lowercase();
     let mut rest = lower.as_str();
     while let Some(at) = rest.find("password") {
@@ -215,6 +253,33 @@ mod tests {
         assert!(!dsn_has_password("postgresql://u@db:5432/x"));
         assert!(!dsn_has_password("host=db user=u dbname=x"));
         assert!(!dsn_has_password("postgresql://db/x?sslmode=require"));
+    }
+
+    #[test]
+    fn percent_encoded_password_key_is_detected() {
+        assert!(dsn_has_password("postgresql://h/db?pass%77ord=secretpw"));
+        assert!(dsn_has_password("postgresql://h/db?%70assword=secretpw"));
+        assert!(dsn_has_password("postgresql://h/db?%50ASS%57ORD=secretpw"));
+        assert!(dsn_has_password(
+            "postgresql://h/db?user=u&%70%61%73%73%77%6f%72%64=x"
+        ));
+        assert!(!dsn_has_password(
+            "postgresql://h/db?sslmode=require&pass%77ordfile=/x"
+        ));
+        assert!(!dsn_has_password("postgresql://h/db?application_name=100%"));
+    }
+
+    #[test]
+    fn percent_decode_keeps_bad_escapes() {
+        assert_eq!(percent_decode("a%2"), "a%2");
+        assert_eq!(percent_decode("%zz%41"), "%zzA");
+        assert_eq!(percent_decode("%"), "%");
+    }
+
+    #[test]
+    fn archiver_query_lets_the_server_compare_the_times() {
+        assert!(ARCHIVER_SQL.contains("last_failed_time > last_archived_time"));
+        assert!(ARCHIVER_SQL.contains("failed_after_archived"));
     }
 
     #[test]

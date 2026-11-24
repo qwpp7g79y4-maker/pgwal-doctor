@@ -1,4 +1,6 @@
 //! The binary renders a fixture data directory in text and JSON.
+//!
+//! The tests that run a `psql` stand-in (`sh` scripts) are Unix only.
 
 use std::path::PathBuf;
 use std::process::Command;
@@ -70,6 +72,7 @@ fn no_source_given_exits_2() {
     assert!(!stderr.contains("panicked"), "{stderr}");
 }
 
+#[cfg(unix)]
 /// A `psql` stand-in that answers from `tests/fixtures/pg/<scenario>`.
 fn fake_psql(tag: &str, body: &str) -> PathBuf {
     use std::os::unix::fs::PermissionsExt;
@@ -81,6 +84,7 @@ fn fake_psql(tag: &str, body: &str) -> PathBuf {
     script
 }
 
+#[cfg(unix)]
 const SERVE_FIXTURES: &str = r#"#!/bin/sh
 for a; do sql="$a"; done
 case "$sql" in
@@ -95,6 +99,7 @@ esac
 cat "$FAKE_PSQL_DIR/$f.tsv"
 "#;
 
+#[cfg(unix)]
 fn run_online(psql: &PathBuf, args: &[&str], fixture_dir: &str) -> std::process::Output {
     Command::new(env!("CARGO_BIN_EXE_pgwal-doctor"))
         .args(args)
@@ -109,6 +114,7 @@ fn run_online(psql: &PathBuf, args: &[&str], fixture_dir: &str) -> std::process:
         .expect("run pgwal-doctor")
 }
 
+#[cfg(unix)]
 #[test]
 fn actionable_finding_exits_1() {
     let psql = fake_psql("actionable", SERVE_FIXTURES);
@@ -118,6 +124,7 @@ fn actionable_finding_exits_1() {
     assert!(text(&out).contains("[Ok] summary"));
 }
 
+#[cfg(unix)]
 #[test]
 fn dsn_error_message_never_contains_password() {
     // A DSN with a password is refused before psql runs.

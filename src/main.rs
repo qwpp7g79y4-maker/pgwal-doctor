@@ -2,6 +2,7 @@
 
 #![forbid(unsafe_code)]
 
+use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -58,14 +59,22 @@ fn main() -> ExitCode {
     } else {
         scan(root.as_ref(), None)
     };
-    print_report(&report, cli.json);
+    if let Err(err) = print_report(&report, cli.json) {
+        // A full disk or a closed pipe is not a panic. Stderr may be gone too,
+        // so its result is ignored.
+        let _ = writeln!(io::stderr(), "error: cannot write the report: {err}");
+        return ExitCode::from(2);
+    }
     ExitCode::from(report.exit_code() as u8)
 }
 
-fn print_report(report: &Report, json: bool) {
-    if json {
-        print!("{}", report.render_json());
+fn print_report(report: &Report, json: bool) -> io::Result<()> {
+    let mut out = io::stdout().lock();
+    let text = if json {
+        report.render_json()
     } else {
-        print!("{}", report.render_text());
-    }
+        report.render_text()
+    };
+    write!(out, "{text}")?;
+    out.flush()
 }

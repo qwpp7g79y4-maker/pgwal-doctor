@@ -1,2 +1,2 @@
-archived_count	last_archived_wal	last_archived_time	failed_count	last_failed_wal	last_failed_time	stats_reset
-300	000000010000000300000001	2026-10-29 05:00:00+00	2	000000010000000300000002	2026-10-29 05:30:00+00	\N
+archived_count	last_archived_wal	last_archived_time	failed_count	last_failed_wal	last_failed_time	stats_reset	failed_after_archived
+300	000000010000000300000001	2026-10-29 05:00:00+00	2	000000010000000300000002	2026-10-29 05:30:00+00	\N	t

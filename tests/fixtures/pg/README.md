@@ -7,7 +7,7 @@ then one line per row, `\N` for SQL NULL.
 | File | Query |
 |---|---|
 | `pg_replication_slots.tsv` | `SELECT *, pg_current_wal_lsn() AS current_lsn FROM pg_replication_slots` |
-| `pg_stat_archiver.tsv` | `SELECT * FROM pg_stat_archiver` |
+| `pg_stat_archiver.tsv` | `pg_stat_archiver` plus the column `failed_after_archived` (see `src/psql.rs`) |
 | `pg_stat_activity.tsv` | client sessions with `xact_age_s` (see `src/psql.rs`) |
 | `pg_prepared_xacts.tsv` | `pg_prepared_xacts` with `age_s` (see `src/psql.rs`) |
 | `pg_settings.tsv` | `name, setting, unit, source` for the WAL settings |

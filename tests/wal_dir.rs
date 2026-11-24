@@ -1,4 +1,8 @@
 //! Offline `wal_dir` check against fixture data directories.
+//!
+//! Unix only: the tests use symlinks, file modes and `sh` stand-ins.
+
+#![cfg(unix)]
 
 mod common;
 

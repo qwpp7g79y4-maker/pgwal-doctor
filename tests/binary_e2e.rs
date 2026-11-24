@@ -2,6 +2,10 @@
 //!
 //! Online cases talk to a `psql` stand-in under a temp directory. They never
 //! open a live server, never set `PGPASSWORD`, and never read `~/.pgpass`.
+//!
+//! Unix only: the tests use symlinks, file modes and `sh` stand-ins.
+
+#![cfg(unix)]
 
 mod common;
 
@@ -705,4 +709,91 @@ fn datadir_and_online_together_use_the_stand_in() {
     assert!(checks.contains(&"wal_dir"), "{checks:?}");
     assert!(checks.contains(&"settings"), "{checks:?}");
     assert!(checks.contains(&"waldir"), "{checks:?}");
+}
+
+#[test]
+fn encoded_password_key_is_refused_before_psql_starts() {
+    let tmp = TempDir::new("dsn-encoded-secret");
+    let marker = tmp.path().join("psql-was-started");
+    let script = tmp.path().join("psql");
+    write_exe(
+        &script,
+        &format!("#!/bin/sh\ntouch '{}'\nexit 0\n", marker.display()),
+    );
+    for dsn in [
+        "postgresql://h/db?pass%77ord=secretpw",
+        "postgresql://h/db?%70assword=secretpw",
+    ] {
+        let out = doctor()
+            .args(["--dsn", dsn])
+            .env("PGWAL_DOCTOR_PSQL", &script)
+            .env_remove("PGPASSWORD")
+            .env_remove("PGPASSFILE")
+            .output()
+            .expect("run");
+        assert_eq!(out.status.code(), Some(1), "{dsn}: {}", text(&out));
+        assert_no_panic(&out);
+        let all = format!("{}{}", text(&out), err_text(&out));
+        assert!(!all.contains("secretpw"), "{all}");
+        assert!(all.contains("DSN contains a password"), "{all}");
+        // psql never ran, so the password never reached a process list.
+        assert!(!marker.exists(), "psql started for {dsn}");
+    }
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn full_stdout_exits_2_without_panic() {
+    let full = fs::OpenOptions::new()
+        .write(true)
+        .open("/dev/full")
+        .expect("open /dev/full");
+    let tmp = TempDir::new("full-stdout");
+    rebuilt_datadir(tmp.path());
+    for json in [false, true] {
+        let mut command = doctor();
+        command.args(["--datadir", tmp.path().to_str().expect("utf-8")]);
+        if json {
+            command.arg("--json");
+        }
+        let out = command
+            .stdout(full.try_clone().expect("clone"))
+            .output()
+            .expect("run");
+        assert_eq!(
+            out.status.code(),
+            Some(2),
+            "json={json}: {}",
+            err_text(&out)
+        );
+        assert_no_panic(&out);
+        assert!(
+            err_text(&out).contains("cannot write the report"),
+            "{}",
+            err_text(&out)
+        );
+    }
+}
+
+#[test]
+fn closed_stdout_pipe_exits_2_without_panic() {
+    use std::process::Stdio;
+    let tmp = TempDir::new("broken-pipe");
+    rebuilt_datadir(tmp.path());
+    let mut child = doctor()
+        .args(["--datadir", tmp.path().to_str().expect("utf-8")])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn");
+    // Close the read end before the report is written.
+    drop(child.stdout.take());
+    let out = child.wait_with_output().expect("wait");
+    assert_eq!(out.status.code(), Some(2), "{}", err_text(&out));
+    assert_no_panic(&out);
+    assert!(
+        err_text(&out).contains("cannot write the report"),
+        "{}",
+        err_text(&out)
+    );
 }

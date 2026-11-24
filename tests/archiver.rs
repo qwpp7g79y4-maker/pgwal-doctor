@@ -110,3 +110,42 @@ fn permission_denied_is_needs_root() {
     assert_eq!(finding.status, Status::NeedsRoot);
     assert!(finding.hint.contains("pg_monitor"));
 }
+
+#[test]
+fn german_dates_are_compared_by_the_server_not_as_text() {
+    // 04.12.2026 (4 December) is newer than 31.01.2026, but sorts lower as text.
+    let report = run("pg17-archiver-german-dates");
+    let finding = only(&report, "archiver");
+    assert_eq!(finding.status, Status::Warn, "{finding:?}");
+    assert!(
+        finding.evidence.contains("archiving is failing"),
+        "{finding:?}"
+    );
+}
+
+#[test]
+fn dst_fall_back_hour_is_compared_by_the_server_not_as_text() {
+    // 02:10+01 is one hour after 02:20+02 although it sorts lower as text.
+    let report = run("pg17-archiver-dst");
+    let finding = only(&report, "archiver");
+    assert_eq!(finding.status, Status::Warn, "{finding:?}");
+    assert!(
+        finding.evidence.contains("archiving is failing"),
+        "{finding:?}"
+    );
+}
+
+#[test]
+fn missing_server_comparison_is_not_reassuring() {
+    let report = run("pg17-archiver-no-comparison");
+    let finding = only(&report, "archiver");
+    assert_eq!(finding.status, Status::Warn, "{finding:?}");
+    assert!(
+        finding.evidence.contains("gave no comparison"),
+        "{finding:?}"
+    );
+    assert!(
+        !finding.evidence.contains("archiving is failing"),
+        "{finding:?}"
+    );
+}
