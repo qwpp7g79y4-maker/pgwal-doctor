@@ -1,6 +1,8 @@
 //! Command-line entry point for pgwal-doctor.
 
-#![forbid(unsafe_code)]
+// The library forbids `unsafe`. The binary allows it in one module only: the
+// stdout probe in `stdout_probe.rs`.
+#![deny(unsafe_code)]
 
 use std::io::{self, Write};
 use std::path::PathBuf;
@@ -8,6 +10,11 @@ use std::process::ExitCode;
 
 use clap::Parser;
 use pgwal_doctor::{scan, Finding, PsqlSource, Report, Root, Status};
+
+#[allow(unsafe_code)] // SAFETY: the one `fcntl(1, F_GETFD)` call only reads a flag; see the module.
+mod stdout_probe;
+
+const CANNOT_WRITE: &str = "error: cannot write the report: standard output is closed";
 
 /// Read-only report of why PostgreSQL's pg_wal keeps growing.
 #[derive(Parser, Debug)]
@@ -39,10 +46,26 @@ struct Cli {
 }
 
 fn main() -> ExitCode {
-    let cli = Cli::parse();
+    // Rust replaces a closed descriptor 1 with /dev/null before `main`; the probe
+    // recorded before that whether it was closed.
+    let stdout_closed = stdout_probe::stdout_was_closed_at_start();
+    let cli = match Cli::try_parse() {
+        Ok(cli) => cli,
+        Err(err) => {
+            let code = if err.use_stderr() { 2 } else { 0 };
+            // Help and version have nowhere to go when standard output is closed.
+            if stdout_closed && code == 0 {
+                return cannot_write();
+            }
+            err.exit();
+        }
+    };
     if cli.datadir.is_none() && cli.dsn.is_none() && !cli.online {
         eprintln!("error: give --datadir, --dsn or --online");
         return ExitCode::from(2);
+    }
+    if stdout_closed {
+        return cannot_write();
     }
     let root = cli.datadir.map(Root::new);
     let report = if cli.dsn.is_some() || cli.online {
@@ -72,6 +95,11 @@ fn main() -> ExitCode {
         return ExitCode::from(2);
     }
     ExitCode::from(report.exit_code() as u8)
+}
+
+fn cannot_write() -> ExitCode {
+    let _ = writeln!(io::stderr(), "{CANNOT_WRITE}");
+    ExitCode::from(2)
 }
 
 fn print_report(report: &Report, json: bool) -> io::Result<()> {

@@ -857,6 +857,48 @@ fn closed_stdout_pipe_exits_2_without_panic() {
     );
 }
 
+/// Runs the binary through `sh` with a redirection on standard output.
+#[cfg(target_os = "linux")]
+fn run_redirected(redirect: &str, args: &[&str]) -> Output {
+    use std::process::Stdio;
+    let bin = env!("CARGO_BIN_EXE_pgwal-doctor");
+    Command::new("sh")
+        .arg("-c")
+        .arg(format!("exec \"$0\" \"$@\" {redirect}"))
+        .arg(bin)
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output_locked()
+        .expect("run")
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn closed_stdout_at_start_exits_2_and_dev_null_exits_0() {
+    let tmp = TempDir::new("closed-at-start");
+    rebuilt_datadir(tmp.path());
+    let datadir = tmp.path().to_str().expect("utf-8");
+    for args in [
+        vec!["--datadir", datadir],
+        vec!["--datadir", datadir, "--json"],
+        vec!["--help"],
+        vec!["--version"],
+    ] {
+        let out = run_redirected(">&-", &args);
+        assert_eq!(out.status.code(), Some(2), "{args:?}: {}", err_text(&out));
+        assert_no_panic(&out);
+        assert!(
+            err_text(&out).contains("cannot write the report"),
+            "{args:?}: {}",
+            err_text(&out)
+        );
+        let out = run_redirected(">/dev/null", &args);
+        assert_eq!(out.status.code(), Some(0), "{args:?}: {}", err_text(&out));
+    }
+}
+
 fn datadir_run(path: &Path) -> Output {
     doctor()
         .args(["--datadir", path.to_str().expect("utf-8")])
