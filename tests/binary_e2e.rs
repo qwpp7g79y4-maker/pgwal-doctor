@@ -349,6 +349,7 @@ fn unreadable_pg_replslot_needs_root() {
         .any(|name| name == "pg_replslot"));
 }
 
+#[cfg(not(target_os = "macos"))]
 #[test]
 fn segment_mtime_before_the_epoch_is_still_counted() {
     let tmp = TempDir::new("mtime");

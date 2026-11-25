@@ -49,7 +49,9 @@ fn help_stdout(args: &[&str]) -> String {
         "args {args:?} stderr {}",
         String::from_utf8_lossy(&out.stderr)
     );
-    String::from_utf8(out.stdout).expect("help is utf-8")
+    String::from_utf8(out.stdout)
+        .expect("help is utf-8")
+        .replace("\r\n", "\n")
 }
 
 /// Command names listed under a `Commands:` heading, the way clap prints them.

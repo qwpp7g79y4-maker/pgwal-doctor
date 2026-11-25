@@ -11,7 +11,13 @@ use pgwal_doctor::{scan, Finding, PsqlSource, Report, Root, Status};
 
 /// Read-only report of why PostgreSQL's pg_wal keeps growing.
 #[derive(Parser, Debug)]
-#[command(name = "pgwal-doctor", version, about)]
+#[command(
+    name = "pgwal-doctor",
+    bin_name = "pgwal-doctor",
+    version,
+    about,
+    term_width = 0
+)]
 struct Cli {
     /// Print the report as JSON.
     #[arg(long)]
