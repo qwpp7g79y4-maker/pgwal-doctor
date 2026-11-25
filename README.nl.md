@@ -240,3 +240,5 @@ opgenomen van echte servers (zie `tests/fixtures/pg/README.md`).
 
 Onder een van beide licenties naar keuze: [MIT](LICENSE-MIT) of
 [Apache-2.0](LICENSE-APACHE).
+
+De licenties van de externe crates in het programma staan in [THIRD-PARTY-LICENSES.html](THIRD-PARTY-LICENSES.html).
