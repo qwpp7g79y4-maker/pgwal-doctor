@@ -6,21 +6,22 @@ Measured on 2026-11-25, Linux x86_64, Rust 1.99.0. Linux only.
 
 ## Tested commit
 
-Code commit `b04083159d1da423c0d9f45d288fcdc41b3d23b3`, the last commit that
+Code commit `d7100436f5a40578ef8c5f90c2a6b5acecdeff47`, the last commit that
 changes anything other than documents. Commits after it change only
 documents (README, CHANGELOG, QUALITY, CONTRIBUTING, KEUR-NVT).
 
 ## Results
 
-The three checks ran in this order. All three exited 0.
+The four checks ran in this order. All four exited 0.
 
 | Check | Exit code | Result |
 |---|---|---|
 | `cargo fmt --check` | 0 | clean |
 | `cargo clippy --all-targets --locked -- -D warnings` | 0 | no warnings |
-| `cargo test --locked` | 0 | 130 passed, 0 failed |
+| `cargo test --locked` | 0 | 131 passed, 0 failed |
+| `cargo test --release --locked` | 0 | 131 passed, 0 failed |
 
-The 130 tests are 34 unit tests and 96 integration tests, summed over all
+The 131 tests are 34 unit tests and 97 integration tests, summed over all
 `cargo test` result lines. They
 use hand-written fixtures and a fake `psql`; no PostgreSQL server was
 involved.
@@ -40,7 +41,6 @@ Linux only; macOS and Windows were not tried.
 
 ## Not run
 
-- `cargo test --release`: not run on this commit.
 - macOS: not run. This commit gates `status_locked` and the `ExitStatus`
   import with `cfg(not(target_os = "macos"))` so clippy should stop reporting
   dead code there (CI 45674968685, macos-15-intel); that was not checked on
