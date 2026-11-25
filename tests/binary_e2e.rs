@@ -13,6 +13,7 @@ use std::fs;
 use std::os::unix::fs::{symlink, PermissionsExt};
 use std::path::Path;
 use std::process::{Command, Output};
+#[cfg(not(target_os = "macos"))]
 use std::time::UNIX_EPOCH;
 
 use common::TempDir;
