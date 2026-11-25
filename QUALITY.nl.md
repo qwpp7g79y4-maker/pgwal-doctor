@@ -21,6 +21,18 @@ De vier controles liepen in deze volgorde. Alle vier eindigden met exitcode 0.
 | `cargo test --locked` | 0 | 131 geslaagd, 0 mislukt |
 | `cargo test --release --locked` | 0 | 131 geslaagd, 0 mislukt |
 
+Rust 1.85.1 (rustc 4eb161250, 2025-03-15), gemeten op 2026-11-25 op dezelfde
+codecommit, Linux x86_64. De drie controles liepen in deze volgorde en
+eindigden alle met exitcode 0.
+
+| Controle | Exitcode | Resultaat |
+|---|---|---|
+| `cargo +1.85 fmt --check` | 0 | schoon |
+| `cargo +1.85 clippy --all-targets --locked -- -D warnings` | 0 | geen waarschuwingen |
+| `cargo +1.85 test --locked` | 0 | 131 geslaagd, 0 mislukt |
+
+Op 1.85 is `cargo test --release --locked` niet uitgevoerd.
+
 De 131 tests zijn 34 unit-tests en 97 integratietests, opgeteld over alle
 resultaatregels van `cargo test`. Ze
 gebruiken met de hand geschreven fixtures en een nep-`psql`; er was geen
@@ -51,7 +63,8 @@ Alleen Linux; macOS en Windows zijn niet geprobeerd.
 - `cargo deny check licenses`: niet uitgevoerd op deze commit.
 - `cargo audit`: niet uitgevoerd (het heeft netwerk nodig voor de
   advisory-database).
-- Bouwen met Rust 1.85 (het opgegeven minimum): niet uitgevoerd.
+- Rust 1.85 `cargo test --release --locked`: niet uitgevoerd. Rust 1.85 fmt,
+  clippy en debug-test: zie Resultaten.
 - `psql --csv` tegen een echte PostgreSQL-server: niet uitgevoerd. De
   CSV-parser en de argumenten zijn getest met een nepper die met de hand CSV
   uitgeeft; de exacte bytes van een echte `psql` 12+ zijn niet vergeleken.

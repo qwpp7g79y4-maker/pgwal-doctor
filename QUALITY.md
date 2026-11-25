@@ -21,6 +21,17 @@ The four checks ran in this order. All four exited 0.
 | `cargo test --locked` | 0 | 131 passed, 0 failed |
 | `cargo test --release --locked` | 0 | 131 passed, 0 failed |
 
+Rust 1.85.1 (rustc 4eb161250, 2025-03-15), measured on 2026-11-25 on the same
+code commit, Linux x86_64. The three checks ran in this order and all exited 0.
+
+| Check | Exit code | Result |
+|---|---|---|
+| `cargo +1.85 fmt --check` | 0 | clean |
+| `cargo +1.85 clippy --all-targets --locked -- -D warnings` | 0 | no warnings |
+| `cargo +1.85 test --locked` | 0 | 131 passed, 0 failed |
+
+On 1.85, `cargo test --release --locked` was not run.
+
 The 131 tests are 34 unit tests and 97 integration tests, summed over all
 `cargo test` result lines. They
 use hand-written fixtures and a fake `psql`; no PostgreSQL server was
@@ -51,7 +62,8 @@ Linux only; macOS and Windows were not tried.
 - Windows and macOS: not measured on this commit.
 - `cargo deny check licenses`: not run on this commit.
 - `cargo audit`: not run (it needs the network to fetch the advisory database).
-- Build with Rust 1.85 (the declared minimum): not run.
+- Rust 1.85 `cargo test --release --locked`: not run. Rust 1.85 fmt, clippy and
+  debug test: see Results.
 - `psql --csv` against a real PostgreSQL server: not run. The CSV parser and
   the arguments are tested with a stand-in that prints CSV by hand; the exact
   bytes of a real `psql` 12+ were not compared.
