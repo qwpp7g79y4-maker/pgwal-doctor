@@ -30,7 +30,7 @@ code commit, Linux x86_64. The three checks ran in this order and all exited 0.
 | `cargo +1.85 clippy --all-targets --locked -- -D warnings` | 0 | no warnings |
 | `cargo +1.85 test --locked` | 0 | 131 passed, 0 failed |
 
-On 1.85, `cargo test --release --locked` exited 0 on 2026-11-25: 307 passed, 0 failed, 0 ignored, summed over all `test result` lines.
+On 1.85, `cargo test --release --locked` exited 0 on 2026-11-25: 241 passed, 0 failed, 0 ignored, summed over all `test result` lines.
 
 The 131 tests are 34 unit tests and 97 integration tests, summed over all
 `cargo test` result lines. They

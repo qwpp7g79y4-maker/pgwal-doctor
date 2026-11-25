@@ -31,7 +31,7 @@ eindigden alle met exitcode 0.
 | `cargo +1.85 clippy --all-targets --locked -- -D warnings` | 0 | geen waarschuwingen |
 | `cargo +1.85 test --locked` | 0 | 131 geslaagd, 0 mislukt |
 
-Op 1.85 gaf `cargo test --release --locked` op 2026-11-25 exit 0: 307 geslaagd, 0 mislukt, 0 genegeerd, opgeteld over alle `test result`-regels.
+Op 1.85 gaf `cargo test --release --locked` op 2026-11-25 exit 0: 241 geslaagd, 0 mislukt, 0 genegeerd, opgeteld over alle `test result`-regels.
 
 De 131 tests zijn 34 unit-tests en 97 integratietests, opgeteld over alle
 resultaatregels van `cargo test`. Ze
