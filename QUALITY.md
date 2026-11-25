@@ -30,7 +30,7 @@ code commit, Linux x86_64. The three checks ran in this order and all exited 0.
 | `cargo +1.85 clippy --all-targets --locked -- -D warnings` | 0 | no warnings |
 | `cargo +1.85 test --locked` | 0 | 131 passed, 0 failed |
 
-On 1.85, `cargo test --release --locked` was not run.
+On 1.85, `cargo test --release --locked` exited 0 on 2026-11-25: 307 passed, 0 failed, 0 ignored, summed over all `test result` lines.
 
 The 131 tests are 34 unit tests and 97 integration tests, summed over all
 `cargo test` result lines. They
@@ -62,8 +62,6 @@ Linux only; macOS and Windows were not tried.
 - Windows and macOS: not measured on this commit.
 - `cargo deny check licenses`: not run on this commit.
 - `cargo audit`: not run (it needs the network to fetch the advisory database).
-- Rust 1.85 `cargo test --release --locked`: not run. Rust 1.85 fmt, clippy and
-  debug test: see Results.
 - `psql --csv` against a real PostgreSQL server: not run. The CSV parser and
   the arguments are tested with a stand-in that prints CSV by hand; the exact
   bytes of a real `psql` 12+ were not compared.
