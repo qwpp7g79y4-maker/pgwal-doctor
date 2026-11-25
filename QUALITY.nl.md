@@ -31,7 +31,7 @@ eindigden alle met exitcode 0.
 | `cargo +1.85 clippy --all-targets --locked -- -D warnings` | 0 | geen waarschuwingen |
 | `cargo +1.85 test --locked` | 0 | 131 geslaagd, 0 mislukt |
 
-Op 1.85 gaf `cargo test --release --locked` op 2026-11-25 exit 0: 241 geslaagd, 0 mislukt, 0 genegeerd, opgeteld over alle `test result`-regels.
+Op 1.85 met een lege `CARGO_TARGET_DIR` gaven `cargo test --locked` en `cargo test --release --locked` op 2026-11-25 elk exit 0: debug 131 geslaagd en release 131 geslaagd, 0 mislukt, 0 genegeerd, opgeteld over de 15 `test result`-regels van elke opdracht. Alle 15 doelwitten horen bij dit pakket. Een eerdere 241 over 26 regels bevatte doelwitten van een andere crate (`ecr_bill`) en telt niet mee.
 
 De 131 tests zijn 34 unit-tests en 97 integratietests, opgeteld over alle
 resultaatregels van `cargo test`. Ze
