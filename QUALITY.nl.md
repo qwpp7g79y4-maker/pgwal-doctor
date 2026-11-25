@@ -6,24 +6,22 @@ Gemeten op 2026-11-25, Linux x86_64, Rust 1.99.0. Alleen Linux.
 
 ## Geteste commit
 
-Codecommit `ed913aa36f775912e1d86fb7eeec232f05916fc1`, de laatste commit die
+Codecommit `b04083159d1da423c0d9f45d288fcdc41b3d23b3`, de laatste commit die
 iets anders wijzigt dan documenten. Commits daarna wijzigen alleen documenten
 (README, CHANGELOG, QUALITY, CONTRIBUTING, KEUR-NVT).
 
 ## Resultaten
 
-De vier controles liepen in deze volgorde, elk met stop bij de eerste fout.
-Alle vier eindigden met exitcode 0.
+De drie controles liepen in deze volgorde. Alle drie eindigden met exitcode 0.
 
 | Controle | Exitcode | Resultaat |
 |---|---|---|
 | `cargo fmt --check` | 0 | schoon |
 | `cargo clippy --all-targets --locked -- -D warnings` | 0 | geen waarschuwingen |
-| `cargo test --locked --no-fail-fast` | 0 | 130 geslaagd, 0 mislukt |
-| `cargo test --release --locked --no-fail-fast` | 0 | 130 geslaagd, 0 mislukt |
+| `cargo test --locked` | 0 | 130 geslaagd, 0 mislukt |
 
 De 130 tests zijn 34 unit-tests en 96 integratietests, opgeteld over alle
-resultaatregels van `cargo test` (gelijk in de debug- en de releaserun). Ze
+resultaatregels van `cargo test`. Ze
 gebruiken met de hand geschreven fixtures en een nep-`psql`; er was geen
 PostgreSQL-server bij betrokken.
 
@@ -41,6 +39,11 @@ een slot. Met 24 drukke lussen naast de tests faalde de oude code in ongeveer
 Alleen Linux; macOS en Windows zijn niet geprobeerd.
 
 ## Niet uitgevoerd
+
+- `cargo test --release`: niet uitgevoerd op deze commit.
+- macOS: niet uitgevoerd. Deze commit zet `cfg(not(target_os = "macos"))` op
+  `status_locked` en de `ExitStatus`-import, zodat clippy daar geen dode code
+  meer meldt (CI 45674968685, macos-15-intel); dat is niet op macOS gecontroleerd.
 
 - GitHub Actions: niet uitgevoerd op deze commit. Er wordt niets beweerd over
   een macOS- of Windows-run, een testrun of een compileercontrole.

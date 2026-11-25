@@ -6,24 +6,22 @@ Measured on 2026-11-25, Linux x86_64, Rust 1.99.0. Linux only.
 
 ## Tested commit
 
-Code commit `ed913aa36f775912e1d86fb7eeec232f05916fc1`, the last commit that
+Code commit `b04083159d1da423c0d9f45d288fcdc41b3d23b3`, the last commit that
 changes anything other than documents. Commits after it change only
 documents (README, CHANGELOG, QUALITY, CONTRIBUTING, KEUR-NVT).
 
 ## Results
 
-The four checks ran in this order, each stopping the run on the first failure.
-All four exited 0.
+The three checks ran in this order. All three exited 0.
 
 | Check | Exit code | Result |
 |---|---|---|
 | `cargo fmt --check` | 0 | clean |
 | `cargo clippy --all-targets --locked -- -D warnings` | 0 | no warnings |
-| `cargo test --locked --no-fail-fast` | 0 | 130 passed, 0 failed |
-| `cargo test --release --locked --no-fail-fast` | 0 | 130 passed, 0 failed |
+| `cargo test --locked` | 0 | 130 passed, 0 failed |
 
 The 130 tests are 34 unit tests and 96 integration tests, summed over all
-`cargo test` result lines (the same in the debug and the release run). They
+`cargo test` result lines. They
 use hand-written fixtures and a fake `psql`; no PostgreSQL server was
 involved.
 
@@ -41,6 +39,12 @@ of 400 runs of `binary_e2e` (32 threads); the new code failed in 0 of 800.
 Linux only; macOS and Windows were not tried.
 
 ## Not run
+
+- `cargo test --release`: not run on this commit.
+- macOS: not run. This commit gates `status_locked` and the `ExitStatus`
+  import with `cfg(not(target_os = "macos"))` so clippy should stop reporting
+  dead code there (CI 45674968685, macos-15-intel); that was not checked on
+  macOS.
 
 - GitHub Actions: not run on this commit. Nothing is claimed about a macOS or
   Windows run, a test run or a compile check.
