@@ -12,7 +12,9 @@ mod common;
 use std::fs;
 use std::os::unix::fs::{symlink, PermissionsExt};
 use std::path::Path;
-use std::process::{Child, Command, ExitStatus, Output};
+#[cfg(not(target_os = "macos"))]
+use std::process::ExitStatus;
+use std::process::{Child, Command, Output};
 use std::sync::RwLock;
 #[cfg(not(target_os = "macos"))]
 use std::time::UNIX_EPOCH;
@@ -75,6 +77,7 @@ static SPAWN: RwLock<()> = RwLock::new(());
 
 trait Locked {
     fn output_locked(&mut self) -> std::io::Result<Output>;
+    #[cfg(not(target_os = "macos"))]
     fn status_locked(&mut self) -> std::io::Result<ExitStatus>;
     fn spawn_locked(&mut self) -> std::io::Result<Child>;
 }
@@ -84,6 +87,7 @@ impl Locked for Command {
         let _guard = SPAWN.read().unwrap_or_else(|e| e.into_inner());
         self.output()
     }
+    #[cfg(not(target_os = "macos"))]
     fn status_locked(&mut self) -> std::io::Result<ExitStatus> {
         let _guard = SPAWN.read().unwrap_or_else(|e| e.into_inner());
         self.status()
