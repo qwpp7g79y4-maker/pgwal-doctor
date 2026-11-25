@@ -29,7 +29,9 @@ involved.
 
 ## Not run
 
-- GitHub Actions: GitHub run 45630158383 is still running. Nothing is claimed
+- GitHub Actions: GitHub run 45630158383 on 8f4980a ended red (Ubuntu:
+  closed_stdout_pipe_exits_2_without_panic; macOS: non_utf8_file_name_does_not_panic).
+  This commit has not been through CI. Nothing is claimed
   about a macOS or Windows run, a test run or a compile check.
 - Windows and macOS: not measured on this commit.
 - `cargo deny check licenses`: not run on this commit.

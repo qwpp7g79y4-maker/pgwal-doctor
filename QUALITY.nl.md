@@ -29,7 +29,9 @@ PostgreSQL-server bij betrokken.
 
 ## Niet uitgevoerd
 
-- GitHub Actions: GitHub-run 45630158383 loopt nog. Er wordt niets beweerd
+- GitHub Actions: GitHub-run 45630158383 op 8f4980a eindigde rood (Ubuntu:
+  closed_stdout_pipe_exits_2_without_panic; macOS: non_utf8_file_name_does_not_panic).
+  Deze commit is niet door CI gegaan. Er wordt niets beweerd
   over een macOS- of Windows-run, een testrun of een compileercontrole.
 - Windows en macOS: niet gemeten op deze commit.
 - `cargo deny check licenses`: niet uitgevoerd op deze commit.

@@ -794,14 +794,20 @@ fn closed_stdout_pipe_exits_2_without_panic() {
     use std::process::Stdio;
     let tmp = TempDir::new("broken-pipe");
     rebuilt_datadir(tmp.path());
-    let mut child = doctor()
+    // The child waits on its stdin before it starts, so the read end of its
+    // stdout is closed before the first byte is written. Without the gate the
+    // report could land in the pipe buffer before the close and exit 0.
+    let bin = env!("CARGO_BIN_EXE_pgwal-doctor");
+    let mut child = Command::new("sh")
+        .args(["-c", "read _gate; exec \"$0\" \"$@\"", bin])
         .args(["--datadir", tmp.path().to_str().expect("utf-8")])
+        .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
         .expect("spawn");
-    // Close the read end before the report is written.
     drop(child.stdout.take());
+    drop(child.stdin.take());
     let out = child.wait_with_output().expect("wait");
     assert_eq!(out.status.code(), Some(2), "{}", err_text(&out));
     assert_no_panic(&out);

@@ -99,7 +99,14 @@ fn non_utf8_file_name_does_not_panic() {
     fs::create_dir(&wal).expect("mkdir");
     wal_segment(&wal, "000000010000000000000001", 100);
     let odd = OsString::from_vec(b"000000010000000000\xff\xfe0002".to_vec());
-    fs::write(wal.join(odd), vec![0u8; 50]).expect("write odd name");
+    if let Err(err) = fs::write(wal.join(odd), vec![0u8; 50]) {
+        // macOS (APFS) refuses a name that is not valid UTF-8 (EILSEQ). There
+        // is nothing to measure there; any other platform must create it.
+        if !cfg!(target_os = "macos") {
+            panic!("cannot create the odd file name: {err}");
+        }
+        return;
+    }
     let report = scan(Some(&Root::new(tmp.path())), None);
     let finding = only(&report, "wal_dir");
     assert_eq!(finding.status, Status::Ok);
