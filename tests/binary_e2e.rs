@@ -12,7 +12,8 @@ mod common;
 use std::fs;
 use std::os::unix::fs::{symlink, PermissionsExt};
 use std::path::Path;
-use std::process::{Command, Output};
+use std::process::{Child, Command, ExitStatus, Output};
+use std::sync::RwLock;
 #[cfg(not(target_os = "macos"))]
 use std::time::UNIX_EPOCH;
 
@@ -63,7 +64,38 @@ fn assert_no_panic(out: &Output) {
     assert!(!text(out).contains("panicked"), "{}", text(out));
 }
 
+/// Guards the window in which a stand-in script is open for writing.
+///
+/// A child forked by another test thread inherits that write handle until it
+/// execs. If the stand-in is started in that window, Linux refuses with
+/// ETXTBSY ("Text file busy") and the run fails at random. `write_exe` takes
+/// the write side; every child this file starts takes the read side while it
+/// is being spawned, so no fork overlaps an open write handle.
+static SPAWN: RwLock<()> = RwLock::new(());
+
+trait Locked {
+    fn output_locked(&mut self) -> std::io::Result<Output>;
+    fn status_locked(&mut self) -> std::io::Result<ExitStatus>;
+    fn spawn_locked(&mut self) -> std::io::Result<Child>;
+}
+
+impl Locked for Command {
+    fn output_locked(&mut self) -> std::io::Result<Output> {
+        let _guard = SPAWN.read().unwrap_or_else(|e| e.into_inner());
+        self.output()
+    }
+    fn status_locked(&mut self) -> std::io::Result<ExitStatus> {
+        let _guard = SPAWN.read().unwrap_or_else(|e| e.into_inner());
+        self.status()
+    }
+    fn spawn_locked(&mut self) -> std::io::Result<Child> {
+        let _guard = SPAWN.read().unwrap_or_else(|e| e.into_inner());
+        self.spawn()
+    }
+}
+
 fn write_exe(path: &Path, body: &str) {
+    let _guard = SPAWN.write().unwrap_or_else(|e| e.into_inner());
     fs::write(path, body).expect("write script");
     fs::set_permissions(path, fs::Permissions::from_mode(0o755)).expect("chmod");
 }
@@ -141,13 +173,13 @@ impl Online {
         for (key, value) in env {
             command.env(key, value);
         }
-        command.output().expect("run pgwal-doctor")
+        command.output_locked().expect("run pgwal-doctor")
     }
 }
 
 #[test]
 fn help_exits_0() {
-    let out = doctor().arg("--help").output().expect("run --help");
+    let out = doctor().arg("--help").output_locked().expect("run --help");
     assert_eq!(out.status.code(), Some(0));
     assert!(text(&out).contains("Usage: pgwal-doctor"));
     assert_no_panic(&out);
@@ -156,7 +188,7 @@ fn help_exits_0() {
 #[test]
 fn no_datadir_dsn_or_online_exits_2_without_panic() {
     for args in [&[][..], &["--json"][..]] {
-        let out = doctor().args(args).output().expect("run");
+        let out = doctor().args(args).output_locked().expect("run");
         assert_eq!(out.status.code(), Some(2), "{args:?} stdout {}", text(&out));
         let stderr = err_text(&out);
         assert!(
@@ -175,7 +207,10 @@ fn rebuilt_datadir_renders_text_and_json() {
     rebuilt_datadir(&datadir);
     let path = datadir.to_str().expect("utf-8");
 
-    let text_out = doctor().args(["--datadir", path]).output().expect("text");
+    let text_out = doctor()
+        .args(["--datadir", path])
+        .output_locked()
+        .expect("text");
     assert_eq!(text_out.status.code(), Some(0), "{}", text(&text_out));
     assert_no_panic(&text_out);
     let report = text(&text_out);
@@ -187,7 +222,7 @@ fn rebuilt_datadir_renders_text_and_json() {
 
     let json_out = doctor()
         .args(["--json", "--datadir", path])
-        .output()
+        .output_locked()
         .expect("json");
     assert_eq!(json_out.status.code(), Some(0), "{}", text(&json_out));
     assert_no_panic(&json_out);
@@ -213,7 +248,7 @@ fn datadir_that_is_a_file_is_an_error_without_panic() {
     fs::write(&path, b"not a directory").expect("write");
     let out = doctor()
         .args(["--datadir", path.to_str().expect("utf-8")])
-        .output()
+        .output_locked()
         .expect("run");
     assert_eq!(out.status.code(), Some(1), "{}", text(&out));
     assert_no_panic(&out);
@@ -237,7 +272,7 @@ fn unreadable_datadir_needs_root() {
     }
     let out = doctor()
         .args(["--datadir", datadir.to_str().expect("utf-8")])
-        .output()
+        .output_locked()
         .expect("run");
     assert_eq!(out.status.code(), Some(1), "{}", text(&out));
     assert_no_panic(&out);
@@ -252,7 +287,7 @@ fn pg_wal_as_a_file_is_an_error() {
     fs::write(datadir.join("pg_wal"), b"not a directory").expect("write");
     let out = doctor()
         .args(["--datadir", datadir.to_str().expect("utf-8")])
-        .output()
+        .output_locked()
         .expect("run");
     assert_eq!(out.status.code(), Some(1), "{}", text(&out));
     assert_no_panic(&out);
@@ -270,7 +305,7 @@ fn dangling_pg_wal_symlink_is_not_present() {
     symlink("missing-wal", datadir.join("pg_wal")).expect("symlink");
     let out = doctor()
         .args(["--datadir", datadir.to_str().expect("utf-8")])
-        .output()
+        .output_locked()
         .expect("run");
     assert_eq!(out.status.code(), Some(0), "{}", text(&out));
     assert_no_panic(&out);
@@ -290,7 +325,7 @@ fn absolute_pg_wal_symlink_is_followed() {
     symlink(&absolute, datadir.join("pg_wal")).expect("symlink");
     let out = doctor()
         .args(["--datadir", datadir.to_str().expect("utf-8")])
-        .output()
+        .output_locked()
         .expect("run");
     assert_eq!(out.status.code(), Some(0), "{}", text(&out));
     assert_no_panic(&out);
@@ -313,7 +348,7 @@ fn archive_status_as_a_file_is_an_error() {
     fs::write(wal.join("archive_status"), b"not a directory").expect("file");
     let out = doctor()
         .args(["--datadir", datadir.to_str().expect("utf-8")])
-        .output()
+        .output_locked()
         .expect("run");
     assert_eq!(out.status.code(), Some(1), "{}", text(&out));
     assert_no_panic(&out);
@@ -338,7 +373,7 @@ fn unreadable_pg_replslot_needs_root() {
     }
     let out = doctor()
         .args(["--json", "--datadir", datadir.to_str().expect("utf-8")])
-        .output()
+        .output_locked()
         .expect("run");
     assert_eq!(out.status.code(), Some(1), "{}", text(&out));
     assert_no_panic(&out);
@@ -366,7 +401,7 @@ fn segment_mtime_before_the_epoch_is_still_counted() {
     let touched = Command::new("touch")
         .args(["-d", "@-1"])
         .arg(&old)
-        .status()
+        .status_locked()
         .expect("touch");
     assert!(touched.success(), "touch could not set a pre-epoch mtime");
     let modified = fs::metadata(&old).expect("meta").modified().expect("mtime");
@@ -376,7 +411,7 @@ fn segment_mtime_before_the_epoch_is_still_counted() {
     );
     let out = doctor()
         .args(["--datadir", datadir.to_str().expect("utf-8")])
-        .output()
+        .output_locked()
         .expect("run");
     assert_eq!(out.status.code(), Some(0), "{}", text(&out));
     assert_no_panic(&out);
@@ -394,7 +429,7 @@ fn control_characters_in_the_datadir_path_are_escaped() {
     fs::create_dir(weird.join("pg_wal")).expect("pg_wal");
     let out = doctor()
         .args(["--datadir", weird.to_str().expect("utf-8")])
-        .output()
+        .output_locked()
         .expect("run");
     assert_eq!(out.status.code(), Some(0), "{}", text(&out));
     assert_no_panic(&out);
@@ -430,7 +465,7 @@ fn dsn_with_a_password_is_refused_before_psql_starts() {
             .env("PGWAL_DOCTOR_PSQL", &script)
             .env_remove("PGPASSWORD")
             .env_remove("PGPASSFILE")
-            .output()
+            .output_locked()
             .expect("run");
         assert_eq!(out.status.code(), Some(1), "{}", text(&out));
         assert_no_panic(&out);
@@ -661,7 +696,7 @@ fn prepared_transactions_disabled_and_long_psql_failure_is_truncated() {
         .env("PGWAL_DOCTOR_PSQL", &script)
         .env_remove("PGPASSWORD")
         .env_remove("PGPASSFILE")
-        .output()
+        .output_locked()
         .expect("run");
     assert_eq!(out.status.code(), Some(1), "{}", text(&out));
     assert_no_panic(&out);
@@ -680,7 +715,7 @@ fn prepared_transactions_disabled_and_long_psql_failure_is_truncated() {
         .env("PGWAL_DOCTOR_PSQL", &sqlstate)
         .env_remove("PGPASSWORD")
         .env_remove("PGPASSFILE")
-        .output()
+        .output_locked()
         .expect("run");
     assert_eq!(out.status.code(), Some(1), "{}", text(&out));
     assert_no_panic(&out);
@@ -709,7 +744,7 @@ fn datadir_and_online_together_use_the_stand_in() {
         .env("FAKE_PSQL_DIR", online.tmp.path())
         .env_remove("PGPASSWORD")
         .env_remove("PGPASSFILE")
-        .output()
+        .output_locked()
         .expect("run");
     assert_eq!(out.status.code(), Some(0), "{}", text(&out));
     assert_no_panic(&out);
@@ -743,7 +778,7 @@ fn encoded_password_key_is_refused_before_psql_starts() {
             .env("PGWAL_DOCTOR_PSQL", &script)
             .env_remove("PGPASSWORD")
             .env_remove("PGPASSFILE")
-            .output()
+            .output_locked()
             .expect("run");
         assert_eq!(out.status.code(), Some(1), "{dsn}: {}", text(&out));
         assert_no_panic(&out);
@@ -772,7 +807,7 @@ fn full_stdout_exits_2_without_panic() {
         }
         let out = command
             .stdout(full.try_clone().expect("clone"))
-            .output()
+            .output_locked()
             .expect("run");
         assert_eq!(
             out.status.code(),
@@ -804,7 +839,7 @@ fn closed_stdout_pipe_exits_2_without_panic() {
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .spawn()
+        .spawn_locked()
         .expect("spawn");
     drop(child.stdout.take());
     drop(child.stdin.take());
@@ -821,7 +856,7 @@ fn closed_stdout_pipe_exits_2_without_panic() {
 fn datadir_run(path: &Path) -> Output {
     doctor()
         .args(["--datadir", path.to_str().expect("utf-8")])
-        .output()
+        .output_locked()
         .expect("run")
 }
 
