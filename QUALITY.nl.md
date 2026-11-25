@@ -6,7 +6,7 @@ Gemeten op 2026-11-25, Linux x86_64, Rust 1.99.0. Alleen Linux.
 
 ## Geteste commit
 
-Codecommit `8f4980a9784487336b30a68318abe54a34b462e0`, de laatste commit die
+Codecommit `ed913aa36f775912e1d86fb7eeec232f05916fc1`, de laatste commit die
 iets anders wijzigt dan documenten. Commits daarna wijzigen alleen documenten
 (README, CHANGELOG, QUALITY, CONTRIBUTING, KEUR-NVT).
 
@@ -27,12 +27,23 @@ resultaatregels van `cargo test` (gelijk in de debug- en de releaserun). Ze
 gebruiken met de hand geschreven fixtures en een nep-`psql`; er was geen
 PostgreSQL-server bij betrokken.
 
+## Wisselende test
+
+`binary_e2e` faalde willekeurig (bijvoorbeeld
+`tab_and_newline_in_a_prepared_gid_do_not_forge_a_row` en
+`datadir_and_online_together_use_the_stand_in`) met `Text file busy (os error
+26)` bij het starten van de nep-`psql`. De oorzaak zit in het testhulpje, niet
+in de tool: een testthread schreef het nepscript terwijl een andere thread een
+kindproces forkte dat de open schrijfhandle erfde, waardoor Linux het script
+niet wilde starten. `write_exe` en elk kind dat dit bestand start delen nu
+een slot. Met 24 drukke lussen naast de tests faalde de oude code in ongeveer
+25 van 400 runs van `binary_e2e` (32 threads); de nieuwe code in 0 van 800.
+Alleen Linux; macOS en Windows zijn niet geprobeerd.
+
 ## Niet uitgevoerd
 
-- GitHub Actions: GitHub-run 45630158383 op 8f4980a eindigde rood (Ubuntu:
-  closed_stdout_pipe_exits_2_without_panic; macOS: non_utf8_file_name_does_not_panic).
-  Deze commit is niet door CI gegaan. Er wordt niets beweerd
-  over een macOS- of Windows-run, een testrun of een compileercontrole.
+- GitHub Actions: niet uitgevoerd op deze commit. Er wordt niets beweerd over
+  een macOS- of Windows-run, een testrun of een compileercontrole.
 - Windows en macOS: niet gemeten op deze commit.
 - `cargo deny check licenses`: niet uitgevoerd op deze commit.
 - `cargo audit`: niet uitgevoerd (het heeft netwerk nodig voor de
