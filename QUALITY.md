@@ -1,5 +1,7 @@
 # Quality
 
+pep: 10
+
 English | [Nederlands](QUALITY.nl.md)
 
 Measured on 2026-11-25, Linux x86_64, Rust 1.99.0. Linux only.

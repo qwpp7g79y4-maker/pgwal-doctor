@@ -1,5 +1,7 @@
 # Kwaliteit
 
+pep: 10
+
 [English](QUALITY.md) | Nederlands
 
 Gemeten op 2026-11-25, Linux x86_64, Rust 1.99.0. Alleen Linux.

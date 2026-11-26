@@ -4,7 +4,9 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.1.0] - 2026-10-29
+
+Changes made after 2026-10-29; the version number did not change.
 
 ### Fixed
 
@@ -41,7 +43,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `KEUR-NVT.md` (modules this tool does not have, with the reason).
 - Test `tests/doc_headings.rs`: both READMEs keep the same sections.
 
-## [0.1.0] - unreleased
 
 ### Added
 
