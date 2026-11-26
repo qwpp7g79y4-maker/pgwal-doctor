@@ -1,5 +1,7 @@
 # pgwal-doctor
 
+[![crates.io](https://img.shields.io/crates/v/pgwal-doctor.svg)](https://crates.io/crates/pgwal-doctor) [![downloads](https://img.shields.io/crates/d/pgwal-doctor.svg)](https://crates.io/crates/pgwal-doctor) [![CI](https://github.com/qwpp7g79y4-maker/pgwal-doctor/actions/workflows/ci.yml/badge.svg)](https://github.com/qwpp7g79y4-maker/pgwal-doctor/actions/workflows/ci.yml) [![PEPAI checked](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fqwpp7g79y4-maker%2Fpgwal-doctor%2Fmain%2F.github%2Fbadge.json)](QUALITY.md) [![MSRV 1.85](https://img.shields.io/badge/MSRV-1.85-blue.svg)](https://github.com/qwpp7g79y4-maker/pgwal-doctor/blob/main/Cargo.toml) [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](https://github.com/qwpp7g79y4-maker/pgwal-doctor#license)
+
 [English](README.md) | Nederlands
 
 Alleen-lezen rapport over waarom `pg_wal` van PostgreSQL blijft groeien. De
@@ -228,6 +230,8 @@ als GitHub Issues; zie [CONTRIBUTING.md](CONTRIBUTING.md). Wijzigingen staan
 in [CHANGELOG.md](CHANGELOG.md), beveiligingsmeldingen volgen
 [SECURITY.md](SECURITY.md), en wat getest is, en wat niet, staat in
 [QUALITY.nl.md](QUALITY.nl.md).
+
+Na een release staat de tool in sluimermodus (dormant): een nieuwe versie komt er alleen bij een gemelde bug, een verzoek of een beveiligingsprobleem. Beveiliging gaat altijd voor.
 
 ## Tests
 
