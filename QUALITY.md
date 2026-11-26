@@ -1,6 +1,6 @@
 # Quality
 
-pep: 8.6
+pep: 10
 
 English | [Nederlands](QUALITY.nl.md)
 
