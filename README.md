@@ -66,7 +66,7 @@ pgwal-doctor --datadir /var/lib/postgresql/17/main    # offline, reads files onl
 pgwal-doctor --online                                 # online, libpq environment
 ```
 
-## Aan de slag in 5 minuten
+## Quickstart in 5 minutes
 
 1. Build the tool (see Installation).
 2. Try it on the fictional data directory in this repository. It reads a few
