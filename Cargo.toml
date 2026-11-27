@@ -7,7 +7,6 @@ license = "MIT OR Apache-2.0"
 authors = ["PEPAI <pep_ai@icloud.com>"]
 description = "Read-only report of why PostgreSQL's pg_wal keeps growing"
 repository = "https://github.com/qwpp7g79y4-maker/pgwal-doctor"
-homepage = "https://github.com/qwpp7g79y4-maker/pgwal-doctor"
 documentation = "https://github.com/qwpp7g79y4-maker/pgwal-doctor"
 exclude = [".github/", "*-plugin/"]
 
