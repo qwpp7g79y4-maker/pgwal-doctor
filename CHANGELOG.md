@@ -47,7 +47,7 @@ Changes made after 2026-10-29; the version number did not change.
 ### Added
 
 - First version of `pgwal-doctor`, a read-only report of why PostgreSQL's
-  `pg_wal` keeps growing. Not released: `publish = false`, no tag.
+  `pg_wal` keeps growing. No tag.
 - Offline checks (`--datadir`): `wal_dir` (segments, bytes, symlinked
   `pg_wal`), `archive_backlog` (`.ready` / `.done` files in
   `pg_wal/archive_status`), `pg_replslot` (slot directory count).

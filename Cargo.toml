@@ -9,7 +9,7 @@ description = "Read-only report of why PostgreSQL's pg_wal keeps growing"
 repository = "https://github.com/qwpp7g79y4-maker/pgwal-doctor"
 homepage = "https://github.com/qwpp7g79y4-maker/pgwal-doctor"
 documentation = "https://github.com/qwpp7g79y4-maker/pgwal-doctor"
-publish = false
+exclude = [".github/", "*-plugin/"]
 
 [dependencies]
 clap = { version = "4.6", features = ["derive"] }

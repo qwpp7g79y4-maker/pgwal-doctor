@@ -8,7 +8,7 @@ Alleen-lezen rapport over waarom `pg_wal` van PostgreSQL blijft groeien. De
 tool kijkt in één keer naar de gebruikelijke oorzaken en geeft één rapport,
 zodat je niet zes views met de hand hoeft te bevragen.
 
-Status: versie 0.1.0, nog niet uitgebracht (`publish = false`).
+Status: versie 0.1.0.
 Man-pagina: [man/pgwal-doctor.1](man/pgwal-doctor.1).
 
 ## Wat het controleert
@@ -51,7 +51,7 @@ Online, via `psql` (`--dsn` of `--online`):
 
 ## Installatie
 
-Er is geen crates.io-release (`publish = false`). Bouw de tool vanuit een
+Bouw de tool vanuit een
 kloon van de repository, met Rust 1.85 of nieuwer:
 
 ```sh

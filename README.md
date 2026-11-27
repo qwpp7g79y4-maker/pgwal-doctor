@@ -8,7 +8,7 @@ Read-only report of why PostgreSQL's `pg_wal` keeps growing. It looks at the
 usual causes in one pass and prints one report, so you do not have to query
 six views by hand.
 
-Status: version 0.1.0, unreleased (`publish = false`).
+Status: version 0.1.0.
 Manual page: [man/pgwal-doctor.1](man/pgwal-doctor.1).
 
 ## What it checks
@@ -49,7 +49,7 @@ Online, through `psql` (`--dsn` or `--online`):
 
 ## Installation
 
-There is no crates.io release (`publish = false`). Build it from a clone of
+Build it from a clone of
 the repository with Rust 1.85 or newer:
 
 ```sh
